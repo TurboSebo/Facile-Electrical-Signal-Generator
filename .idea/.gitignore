@@ -6,3 +6,9 @@
 # Datasource local storage ignored files
 /dataSources/
 /dataSources.local.xml
+
+#added
+copilot.data.migration.agent.xml
+copilot.data.migration.edit.xml
+copilot.data.migration.ask2agent.xml
+copilot.data.migration.ask.xml
