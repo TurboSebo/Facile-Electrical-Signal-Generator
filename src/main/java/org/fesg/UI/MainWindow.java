@@ -9,6 +9,7 @@ import java.awt.*;
 public class MainWindow extends JFrame {
 
     private final LanguageManager languageManager;
+    private StatusBar statusBar;
 
     public MainWindow() {
         this.languageManager = LanguageManager.getInstance();
@@ -25,6 +26,10 @@ public class MainWindow extends JFrame {
         setLayout(new BorderLayout());
 
         setupMenuBar();
+
+        // Dodanie paska statusu
+        statusBar = new StatusBar();
+        add(statusBar, BorderLayout.SOUTH);
     }
 
     private void setupMenuBar() {
@@ -39,5 +44,8 @@ public class MainWindow extends JFrame {
         setJMenuBar(menuBar);
     }
 
-
+    public void setStatus(String status) {
+        // Upewnij się, że aktualizacja GUI jest w wątku EDT
+        SwingUtilities.invokeLater(() -> statusBar.setStatus(status));
+    }
 }
