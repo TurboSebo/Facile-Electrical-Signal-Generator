@@ -15,7 +15,10 @@ public final class TranslationKey {
     public static final String MENU_LANGUAGE = "menu.language";
 
     // Status Bar
-    public static final String STATUS_READY = "status.ready";
-    public static final String STATUS_ARDUINO_CONNECTED = "status.arduino.connected";
-    public static final String STATUS_ARDUINO_DISCONNECTED = "status.arduino.disconnected";
+    // Statusy połączenia
+    public static final String STATUS_SEARCHING = "status.searching";
+    public static final String STATUS_FOUND = "status.found";
+    public static final String STATUS_ERROR = "status.error";
+    public static final String STATUS_CONNECTED = "status.connected";
+    public static final String STATUS_VERIFYING = "status.verifying";
 }

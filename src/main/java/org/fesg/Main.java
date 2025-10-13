@@ -19,10 +19,18 @@ public class Main {
             mainWindow.setVisible(true);
 
             // Uruchomienie wątku do wykrywania Arduino
-            ArduinoDetector detector = new ArduinoDetector(mainWindow::setStatus);
+            ArduinoDetector detector = new ArduinoDetector(mainWindow::setStatus, mainWindow::setError);
             Thread detectorThread = new Thread(detector);
             detectorThread.setDaemon(true); // Ustawienie wątku jako daemon, aby zakończył się wraz z aplikacją
             detectorThread.start();
+
+            //listener do poprawnego zamykania wątku
+            mainWindow.addWindowListener(new java.awt.event.WindowAdapter() {
+                @Override
+                public void windowClosing(java.awt.event.WindowEvent e) {
+                    detectorThread.interrupt();
+                }
+            });
         });
     }
 }

@@ -48,4 +48,8 @@ public class MainWindow extends JFrame {
         // Upewnij się, że aktualizacja GUI jest w wątku EDT
         SwingUtilities.invokeLater(() -> statusBar.setStatus(status));
     }
+
+    public void setError(String error) {
+        SwingUtilities.invokeLater(() -> statusBar.setError(error));
+    }
 }
