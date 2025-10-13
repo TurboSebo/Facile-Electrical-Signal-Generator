@@ -1,6 +1,7 @@
 package org.fesg.UI;
 
 import org.fesg.i18n.LanguageManager;
+import org.fesg.i18n.TranslationKey;
 
 import javax.swing.*;
 import java.awt.*;
@@ -15,7 +16,7 @@ public class MainWindow extends JFrame {
     }
 
     private void initializeUI() {
-        setTitle(languageManager.getString("app.title"));
+        setTitle(languageManager.getString(TranslationKey.APP_TITLE));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(800, 600);
         setLocationRelativeTo(null); //ustawia okno na środku ekranu
@@ -29,8 +30,8 @@ public class MainWindow extends JFrame {
     private void setupMenuBar() {
         JMenuBar menuBar = new JMenuBar();
 
-        JMenu fileMenu = new JMenu(languageManager.getString("menu.file"));
-        JMenuItem exitMenu = new JMenuItem(languageManager.getString("menu.file.exit"));
+        JMenu fileMenu = new JMenu(languageManager.getString(TranslationKey.MENU_FILE));
+        JMenuItem exitMenu = new JMenuItem(languageManager.getString(TranslationKey.MENU_FILE_EXIT));
         exitMenu.addActionListener(e -> System.exit(0));
         fileMenu.add(exitMenu);
 
