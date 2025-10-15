@@ -39,6 +39,22 @@ public class ArduinoDetector implements Runnable {
     private final LanguageManager languageManager;
 
 
+    boolean autosearch = true;
+
+    public boolean isAutosearch() {
+        return autosearch;
+    }
+
+    public void setAutosearch(boolean autosearch) {
+        this.autosearch = autosearch;
+    }
+    public void toogleAutosearch() {
+        this.autosearch = !this.autosearch;
+        if (this.autosearch) {
+            new Thread(this).start();        }
+    }
+
+
     /**
      * Flaga połączenia – obecnie nie jest aktualizowana w kodzie (wartość pozostaje domyślna).
      * Pozostawiona na przyszłość: można ją zsynchronizować z przejściami stanów CONNECTED/SEARCHING.
@@ -54,7 +70,10 @@ public class ArduinoDetector implements Runnable {
     /**
      * Ostatni komunikat błędu (opcjonalny), prezentowany w UI gdy stan = ERROR.
      */
-    private volatile String lastErrorMessage = "";
+
+    static volatile String lastErrorMessage = "";
+
+    static volatile String detectedPort = ""; // Dodajemy do śledzenia portu
 
     /**
      * @param statusUpdater funkcja aktualizująca status w interfejsie użytkownika
@@ -81,96 +100,143 @@ public class ArduinoDetector implements Runnable {
 
     @Override
     public void run() {
-        // Celowo nieskończona pętla: wątek działa w tle jako daemon i kończy się wraz z aplikacją.
         updateState(ConnectionState.SEARCHING, "");
 
-        while (!Thread.currentThread().isInterrupted()) {
-            // 1) Pobierz dostępne porty COM/TTY z jSerialComm
-            SerialPort[] ports = SerialPort.getCommPorts();
-
-            // 2) Heurystyka wykrywania: sprawdzamy opis/systemową nazwę portu.
-            //    Uwaga: to proste podejście – na różnych OS opis/systemowa nazwa może się różnić.
-            //    Regex obejmuje m.in. Linux (ttyUSB/ttyACM) oraz macOS (cu.usbmodem...).
-            boolean found = false;
-            for (SerialPort port : ports) {
-                String description = port.getPortDescription().toLowerCase();
-                String systemName = port.getSystemPortName().toLowerCase();
-
-                if (description.contains("arduino") ||
-                        systemName.contains("arduino")||
-                        systemName.matches("(ttyUSB|ttyACM|cu\\.usbmodem).*")
-                ) {
-                    found = true;
-                    break;
-                }
-            }
-
-            // 3) Reaguj tylko na zmianę stanu, aby nie spamować UI tym samym komunikatem
-            if (found) {
-                // Znaleziono urządzenie. Jeśli byliśmy w stanie wyszukiwania,
-                // przejdź do stanu FOUND i rozpocznij weryfikację.
-                if (currentState == ConnectionState.SEARCHING) {
-                    updateState(ConnectionState.FOUND, "");
-                    verifyArduinoProgram(); // Uruchamia weryfikację w tle (patrz opis w metodzie)
-                }
-                // Jeśli stan to już FOUND lub CONNECTED, nie robimy nic, czekamy.
-            } else {
-                // Nie znaleziono urządzenia. Jeśli poprzednio było znalezione lub połączone,
-                // wróć do stanu wyszukiwania.
-                if (currentState != ConnectionState.SEARCHING) {
-                    updateState(ConnectionState.SEARCHING, "");
-                }
-            }
+        while (!Thread.currentThread().isInterrupted() && autosearch) {
 
             try {
-                // 4) Odczekaj 2 sekundy do kolejnego skanowania (odciążenie CPU/portów)
+                SerialPort[] ports = SerialPort.getCommPorts();
+                boolean found = scanForArduino(ports);
+
+                handleArduinoState(found);
                 Thread.sleep(2000);
             } catch (InterruptedException e) {
-                // Jeśli ktoś przerwał wątek, zakończ działanie
                 Thread.currentThread().interrupt();
-                break; // Wyjdź z pętli while
+                break;
+            } catch (Exception e) {
+                handleError("Błąd skanowania portów: " + e.getMessage());
             }
-            System.out.println("Status: "+statusUpdater.getClass().getName() +" "+ isArduinoConnected());
-
         }
     }
 
-    /**
-     * Pseudoweryfikacja programu na Arduino.
-     * Aktualnie: odczekuje 3 sekundy i jeśli nadal jesteśmy w stanie FOUND, przełącza na CONNECTED.
-     * Docelowo: można tu otworzyć port szeregowy, wysłać "ping"/handshake i sprawdzić odpowiedź.
-     * Uwaga na warunki wyścigu – stan może się zmienić w trakcie opóźnienia.
-     */
-    private void verifyArduinoProgram(){
+    boolean scanForArduino(SerialPort[] ports) {
+        System.out.println("=== SKANOWANIE PORTÓW ===");
+        for (SerialPort port : ports) {
+            String description = port.getPortDescription().toLowerCase();
+            String systemName = port.getSystemPortName().toLowerCase();
+
+            System.out.println("Port: " + systemName + " - " + description);
+
+            if (systemName.contains("arduino")||
+                    description.contains("arduino")||
+                    description.contains("ch340")||
+                    //description.contains("serial port") ||
+                    description.contains("\"usb serial")
+            ) {
+                detectedPort = systemName;
+                System.out.println("Znaleziono arduino na porcie " + detectedPort);
+                return true;
+            }
+        }
+        detectedPort = "";
+        return false;
+    }
+
+    void handleArduinoState(boolean found){
+        if (found) {
+            if (currentState == ConnectionState.SEARCHING || currentState == ConnectionState.ERROR) {
+                updateState(ConnectionState.FOUND, "");
+                startVerification();
+            }
+        }
+        else {
+            if (currentState == ConnectionState.FOUND  || currentState == ConnectionState.CONNECTED) {
+                updateState(ConnectionState.SEARCHING, "Arduino odłączone");
+            }
+        }
+    }
+
+    private void handleError(String errorMessage) {
+        updateState(ConnectionState.ERROR, errorMessage);
+        /*
+        try {
+            Thread.sleep(5000); // Dłuższe oczekiwanie przy błędzie
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
+        */
+    }
+
+    private void startVerification() {
         new Thread(() -> {
             try {
-                Thread.sleep(3000);
+                // Weryfikacja w 3 krokach z aktualizacjami
+                for (int i = 1; i <= 3; i++) {
+                    if (currentState != ConnectionState.FOUND) {
+                        return; // Przerwano weryfikację
+                    }
+
+                    // Aktualizuj status co sekundę
+                    final int step = i;
+                    SwingUtilities.invokeLater(() ->
+                            statusUpdater.accept("Arduino znalezione - weryfikacja (" + step + "/3)...")
+                    );
+
+                    Thread.sleep(1000);
+                }
+
+                // Tylko jeśli nadal jesteśmy w stanie FOUND
                 if (currentState == ConnectionState.FOUND) {
                     updateState(ConnectionState.CONNECTED, "");
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
-        }).start();
+        } ,"arduino-verify").start();
     }
 
-    /**
-     * Centralne miejsce do zmiany stanu i notyfikacji UI.
-     * - Aktualizuje pola stanu/błędu.
-     * - Przekazuje nowy stan do UI na EDT przez SwingUtilities.invokeLater (bezpieczeństwo wątkowe).
-     * Kontrakt: statusUpdater przyjmuje String z nazwą enum-a (np. "CONNECTED").
-     */
-    private void updateState(ConnectionState newState, String errorMessage) {
+    void updateState(ConnectionState newState, String errorMessage) {
+        ConnectionState oldState = currentState;
         currentState = newState;
         lastErrorMessage = errorMessage;
 
-        SwingUtilities.invokeLater(() -> {
-            statusUpdater.accept(String.valueOf(newState));
-            if (newState == ConnectionState.ERROR && errorMessage != null) {
+        SwingUtilities.invokeLater(() ->{
+            String statusText = getStatusText(newState);
+            statusUpdater.accept(statusText);
+
+            //if (newState == ConnectionState.ERROR && errorMessage != null && !errorMessage.isEmpty()) {
+            if (newState == ConnectionState.ERROR ) {
                 errorMessageUpdater.accept(errorMessage);
+            } else {
+                errorMessageUpdater.accept(""); // czyszczenie błędów
             }
+
         });
 
+        System.out.println("Status zmieniony: " + oldState + " -> " + newState + (detectedPort.isEmpty() ? "" : " [Port: " + detectedPort + "]"));
+
+    }
+
+    String getStatusText(ConnectionState state) {
+        switch (state){
+            case SEARCHING: return "szukanie Arduino...";
+            case FOUND: return "Arduino znalezione - weryfikacja...";
+            case CONNECTED: return "Arduino gotowe! [Port: " + detectedPort + "]";
+            case ERROR: return "Błąd - sprawdź połączenie";
+            default: return "Nieznany status";
+        }
+    }
+
+    public static ConnectionState getCurrentState() {
+        return currentState;
+    }
+
+    public static String getDetectedPort() {
+        return detectedPort;
+    }
+
+    public static String getLastErrorMessage() {
+        return lastErrorMessage;
     }
 
     /**
@@ -179,5 +245,6 @@ public class ArduinoDetector implements Runnable {
      */
     public static void setConnectionState(ConnectionState newState) {
         currentState = newState;
+
     }
 }

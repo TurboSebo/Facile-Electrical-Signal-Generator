@@ -44,6 +44,18 @@ public class StatusBar extends JPanel {
 
     public void setStatus(String status) {
         statusLabel.setText(" " + status);
+
+        // Automatyczna zmiana koloru ikony
+        if (status.contains("Szukanie")) {
+            connectionIcon.setForeground(Color.GRAY);
+        } else if (status.contains("znalezione") || status.contains("weryfikacja")) {
+            connectionIcon.setForeground(Color.ORANGE);
+        } else if (status.contains("gotowe")) {
+            connectionIcon.setForeground(new Color(0, 180, 0)); // Zielony
+        } else if (status.contains("Błąd")) {
+            connectionIcon.setForeground(Color.RED);
+        }
+
     }
 
     public void setError(String error) {

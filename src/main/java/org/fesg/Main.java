@@ -16,10 +16,12 @@ public class Main {
                 throw new RuntimeException(e);
             }
             MainWindow mainWindow = new MainWindow();
-            mainWindow.setVisible(true);
+
 
             // Uruchomienie wątku do wykrywania Arduino
             ArduinoDetector detector = new ArduinoDetector(mainWindow::setStatus, mainWindow::setError);
+            mainWindow.setArduinoDetector(detector); // Przekazanie detektora do okna
+            mainWindow.setVisible(true);
             Thread detectorThread = new Thread(detector);
             detectorThread.setDaemon(true); // Ustawienie wątku jako daemon, aby zakończył się wraz z aplikacją
             detectorThread.start();
