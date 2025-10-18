@@ -9,7 +9,7 @@ import java.util.function.Consumer;
 
 public class ArduinoDetector implements Runnable {
 
-    private final Consumer<String> statusUpdater;
+    private final Consumer<ConnectionState> statusUpdater;
     private Consumer<String> errorMessageUpdater;
     private final LanguageManager languageManager;
 
@@ -35,7 +35,7 @@ public class ArduinoDetector implements Runnable {
     static volatile String lastErrorMessage = "";
     static volatile String detectedPort = "";
 
-    public ArduinoDetector(Consumer<String> statusUpdater, Consumer<String> errorMessageUpdater) {
+    public ArduinoDetector(Consumer<ConnectionState> statusUpdater, Consumer<String> errorMessageUpdater) {
         this.statusUpdater = statusUpdater;
         this.languageManager = LanguageManager.getInstance();
         this.errorMessageUpdater = errorMessageUpdater;
@@ -45,7 +45,7 @@ public class ArduinoDetector implements Runnable {
         return arduinoConnected;
     }
 
-    public Consumer<String> getStatusUpdater() {
+    public Consumer<ConnectionState> getStatusUpdater() {
         return statusUpdater;
     }
 
@@ -142,9 +142,8 @@ public class ArduinoDetector implements Runnable {
                         return;
                     }
                     final int step = i;
-                    SwingUtilities.invokeLater(() ->
-                            statusUpdater.accept("Arduino znalezione - weryfikacja (" + step + "/3)...")
-                    );
+                    // Aktualizacja stanu zamiast tekstu
+                    SwingUtilities.invokeLater(() -> statusUpdater.accept(ConnectionState.VERIFYING));
                     Thread.sleep(1000);
                 }
                 if (currentState == ConnectionState.FOUND) {
@@ -162,8 +161,7 @@ public class ArduinoDetector implements Runnable {
         lastErrorMessage = errorMessage;
 
         SwingUtilities.invokeLater(() -> {
-            String statusText = getStatusText(newState);
-            statusUpdater.accept(statusText);
+            statusUpdater.accept(newState);
             if (newState == ConnectionState.ERROR) {
                 errorMessageUpdater.accept(errorMessage);
             } else {
@@ -175,6 +173,7 @@ public class ArduinoDetector implements Runnable {
                 + (detectedPort.isEmpty() ? "" : " [Port: " + detectedPort + "]"));
     }
 
+  /*
     String getStatusText(ConnectionState state) {
         switch (state) {
             case SEARCHING: return "szukanie Arduino...";
@@ -184,7 +183,7 @@ public class ArduinoDetector implements Runnable {
             default: return "Nieznany status";
         }
     }
-
+*/
     public static ConnectionState getCurrentState() {return currentState;}
 
     public static String getDetectedPort() {return detectedPort;}

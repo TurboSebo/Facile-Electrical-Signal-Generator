@@ -63,8 +63,8 @@ public class MainWindow extends JFrame {
         setJMenuBar(menuBar);
     }
 
-    public void setStatus(String status) {
-        SwingUtilities.invokeLater(() -> statusBar.setStatus(status));
+    public void setStatus(org.fesg.service.ConnectionState connectionState) {
+        SwingUtilities.invokeLater(() -> statusBar.setStatus(connectionState));
     }
 
     public void setError(String error) {

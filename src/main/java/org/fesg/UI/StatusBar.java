@@ -3,6 +3,7 @@ package org.fesg.UI;
 import org.fesg.i18n.LanguageManager;
 import org.fesg.i18n.TranslationKey;
 import org.fesg.service.ArduinoDetector;
+import org.fesg.service.ConnectionState;
 
 import javax.swing.*;
 import javax.swing.border.BevelBorder;
@@ -12,23 +13,22 @@ public class StatusBar extends JPanel {
 
     private final JLabel statusLabel;
     private final JLabel errorLabel;
-    private JLabel connectionIcon;
+    private final JLabel connectionIcon;
+    private final LanguageManager languageManager;
 
     JPanel contentPanel;
 
     public StatusBar() {
+        this.languageManager = LanguageManager.getInstance();
         setLayout(new BorderLayout());
         setBorder(new BevelBorder(BevelBorder.LOWERED));
-
-        LanguageManager languageManager = LanguageManager.getInstance();
-        // Tekst startowy – zostanie nadpisany przez ArduinoDetector przez callback setStatus
 
         //ikona połączenia z arduino
         connectionIcon = new JLabel("●");
         connectionIcon.setForeground(Color.GRAY);
         connectionIcon.setFont(new Font("SansSerif", Font.BOLD, 14));
 
-        statusLabel = new JLabel("szukanie");
+        statusLabel = new JLabel(languageManager.getString(TranslationKey.STATUS_SEARCHING));
 
         errorLabel = new JLabel("");
         errorLabel.setForeground(Color.RED);
@@ -42,22 +42,50 @@ public class StatusBar extends JPanel {
         add(contentPanel, BorderLayout.CENTER);
     }
 
-    public void setStatus(String status) {
-        statusLabel.setText(" " + status);
+    public void setStatus(ConnectionState connectionState) {
+        String statusText;
+        Color iconColor;
 
-        // Automatyczna zmiana koloru ikony
-        if (status.contains("Szukanie")) {
-            connectionIcon.setForeground(Color.GRAY);
-        } else if (status.contains("znalezione") || status.contains("weryfikacja")) {
-            connectionIcon.setForeground(Color.ORANGE);
-        } else if (status.contains("gotowe")) {
-            connectionIcon.setForeground(new Color(0, 180, 0)); // Zielony
-        } else if (status.contains("Błąd")) {
-            connectionIcon.setForeground(Color.RED);
+        switch (connectionState) {
+            case SEARCHING:
+                statusText = languageManager.getString(TranslationKey.STATUS_SEARCHING);
+                iconColor = Color.GRAY;
+                break;
+            case FOUND:
+                statusText = languageManager.getString(TranslationKey.STATUS_FOUND);
+                iconColor = Color.ORANGE;
+                break;
+            case VERIFYING:
+                statusText = languageManager.getString(TranslationKey.STATUS_VERIFYING);
+                iconColor = Color.ORANGE;
+                break;
+            case CONNECTED:
+                String detectedPort= ArduinoDetector.getDetectedPort();
+                statusText = languageManager.getString(TranslationKey.STATUS_CONNECTED ) + " (" + detectedPort + ")";
+                iconColor = new Color(0, 180, 0); // Zielony
+                break;
+            case DISCONNECTED:
+                statusText = languageManager.getString(TranslationKey.STATUS_DISCONNECTED);
+                iconColor = Color.GRAY;
+                break;
+            case ERROR:
+                statusText = languageManager.getString(TranslationKey.STATUS_ERROR);
+                iconColor = Color.RED;
+                break;
+            default:
+                statusText = languageManager.getString(TranslationKey.STATUS_UNKNOWN);
+                iconColor = Color.GRAY;
+                break;
         }
 
+        statusLabel.setText(statusText);
+        connectionIcon.setForeground(iconColor);
     }
 
+    public void setStatus() {
+        statusLabel.setText(languageManager.getString(TranslationKey.STATUS_UNKNOWN));
+        connectionIcon.setForeground(Color.GRAY);
+    }
     public void setError(String error) {
         errorLabel.setText(error);
     }

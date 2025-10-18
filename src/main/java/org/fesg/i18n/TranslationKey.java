@@ -24,4 +24,6 @@ public final class TranslationKey {
     public static final String STATUS_ERROR = "status.error";
     public static final String STATUS_CONNECTED = "status.connected";
     public static final String STATUS_VERIFYING = "status.verifying";
+    public static final String STATUS_DISCONNECTED = "status.disconnected";
+    public static final String STATUS_UNKNOWN = "status.unknown";
 }
