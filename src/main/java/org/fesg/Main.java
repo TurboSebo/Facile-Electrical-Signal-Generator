@@ -22,15 +22,17 @@ public class Main {
             ArduinoDetector detector = new ArduinoDetector(mainWindow::setStatus, mainWindow::setError);
             mainWindow.setArduinoDetector(detector); // Przekazanie detektora do okna
             mainWindow.setVisible(true);
-            Thread detectorThread = new Thread(detector);
-            detectorThread.setDaemon(true); // Ustawienie wątku jako daemon, aby zakończył się wraz z aplikacją
-            detectorThread.start();
+            //zakomentowane bo powiela wątki
+           // Thread detectorThread = new Thread(detector);
+            //detectorThread.setDaemon(true); // Ustawienie wątku jako daemon, aby zakończył się wraz z aplikacją
+            //detectorThread.start();
+            detector.start();
 
             //listener do poprawnego zamykania wątku
             mainWindow.addWindowListener(new java.awt.event.WindowAdapter() {
                 @Override
                 public void windowClosing(java.awt.event.WindowEvent e) {
-                    detectorThread.interrupt();
+                    detector.stop();
                 }
             });
         });

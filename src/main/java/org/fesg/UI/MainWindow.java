@@ -52,7 +52,7 @@ public class MainWindow extends JFrame {
         exitMenu.addActionListener(e -> System.exit(0));
         autosearchCheckbox.addActionListener(e -> {
             if (arduinoDetector != null) {
-                arduinoDetector.toogleAutosearch();
+                arduinoDetector.toggleAutosearch();
                 autosearchCheckbox.setState(arduinoDetector.isAutosearch());
             }
         });
@@ -64,7 +64,12 @@ public class MainWindow extends JFrame {
     }
 
     public void setStatus(org.fesg.service.ConnectionState connectionState) {
-        SwingUtilities.invokeLater(() -> statusBar.setStatus(connectionState));
+        SwingUtilities.invokeLater(() -> {
+            if (connectionState == org.fesg.service.ConnectionState.CONNECTED && arduinoDetector != null) {
+                statusBar.setDetectedPort(arduinoDetector.getDetectedPort());
+            }
+            statusBar.setStatus(connectionState);
+        });
     }
 
     public void setError(String error) {

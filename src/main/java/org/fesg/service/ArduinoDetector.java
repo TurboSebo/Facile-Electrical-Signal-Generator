@@ -13,7 +13,7 @@ public class ArduinoDetector implements Runnable {
     private Consumer<String> errorMessageUpdater;
     private final LanguageManager languageManager;
 
-    private volatile boolean autosearch = true;
+    private volatile boolean autosearch = false;
     public boolean isAutosearch() {
         return autosearch;
     }
@@ -21,19 +21,19 @@ public class ArduinoDetector implements Runnable {
     public void setAutosearch(boolean autosearch) {
         this.autosearch = autosearch;
     }
-    public void toogleAutosearch() {
+    public void toggleAutosearch() {
         this.autosearch = !this.autosearch;
-        if (this.autosearch) {
-            new Thread(this).start();        }
+       // if (this.autosearch) {new Thread(this).start();  } // zakomentowane ze względu, że uruchamiało kolejny, ten sam wątek
     }
 
     private ScheduledExecutorService scheduler;
     private ScheduledFuture<?> scanTask;
 
-    private static volatile boolean arduinoConnected = false;
-    private static volatile ConnectionState currentState = ConnectionState.SEARCHING;
-    static volatile String lastErrorMessage = "";
-    static volatile String detectedPort = "";
+    // przeniesiono stan do pól instancji (usunięto static)
+    private volatile boolean arduinoConnected = false;
+    private volatile ConnectionState currentState = ConnectionState.SEARCHING;
+    volatile String lastErrorMessage = "";
+    volatile String detectedPort = "";
 
     public ArduinoDetector(Consumer<ConnectionState> statusUpdater, Consumer<String> errorMessageUpdater) {
         this.statusUpdater = statusUpdater;
@@ -41,7 +41,8 @@ public class ArduinoDetector implements Runnable {
         this.errorMessageUpdater = errorMessageUpdater;
     }
 
-    public static boolean isArduinoConnected() {
+    // usunięto static
+    public boolean isArduinoConnected() {
         return arduinoConnected;
     }
 
@@ -64,7 +65,7 @@ public class ArduinoDetector implements Runnable {
         }
         if (scanTask == null || scanTask.isCancelled()) {
             updateState(ConnectionState.SEARCHING, "");
-            autosearch = true;
+            //autosearch = true; //zakomentowane, gdyż przes to zawsze przy uruchamianiu wyszukiwał
             scanTask = scheduler.scheduleAtFixedRate(this::scanTick, 0, 2, TimeUnit.SECONDS);
         }
     }
@@ -148,6 +149,7 @@ public class ArduinoDetector implements Runnable {
                 }
                 if (currentState == ConnectionState.FOUND) {
                     updateState(ConnectionState.CONNECTED, "");
+                    arduinoConnected = true;
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -184,13 +186,14 @@ public class ArduinoDetector implements Runnable {
         }
     }
 */
-    public static ConnectionState getCurrentState() {return currentState;}
+    // usunięto static
+    public ConnectionState getCurrentState() {return currentState;}
 
-    public static String getDetectedPort() {return detectedPort;}
+    public String getDetectedPort() {return detectedPort;}
 
-    public static String getLastErrorMessage() {return lastErrorMessage;}
+    public String getLastErrorMessage() {return lastErrorMessage;}
 
-    public static void setConnectionState(ConnectionState newState) {
+    public void setConnectionState(ConnectionState newState) {
         currentState = newState;
     }
 }

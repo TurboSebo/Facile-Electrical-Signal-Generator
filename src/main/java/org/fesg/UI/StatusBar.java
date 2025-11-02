@@ -2,7 +2,6 @@ package org.fesg.UI;
 
 import org.fesg.i18n.LanguageManager;
 import org.fesg.i18n.TranslationKey;
-import org.fesg.service.ArduinoDetector;
 import org.fesg.service.ConnectionState;
 
 import javax.swing.*;
@@ -17,6 +16,8 @@ public class StatusBar extends JPanel {
     private final LanguageManager languageManager;
 
     JPanel contentPanel;
+
+    private String detectedPort = "";
 
     public StatusBar() {
         this.languageManager = LanguageManager.getInstance();
@@ -60,7 +61,6 @@ public class StatusBar extends JPanel {
                 iconColor = Color.ORANGE;
                 break;
             case CONNECTED:
-                String detectedPort= ArduinoDetector.getDetectedPort();
                 statusText = languageManager.getString(TranslationKey.STATUS_CONNECTED ) + " (" + detectedPort + ")";
                 iconColor = new Color(0, 180, 0); // Zielony
                 break;
@@ -88,5 +88,9 @@ public class StatusBar extends JPanel {
     }
     public void setError(String error) {
         errorLabel.setText(error);
+    }
+
+    public void setDetectedPort(String detectedPort) {
+        this.detectedPort = detectedPort != null ? detectedPort : "";
     }
 }
