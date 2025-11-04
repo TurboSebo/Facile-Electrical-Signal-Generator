@@ -16,6 +16,9 @@ public final class TranslationKey {
     public static final String MENU_FILE_EXIT = "menu.file.exit";
     public static final String MENU_LANGUAGE = "menu.language";
     public static final String MENU_TOOLS = "menu.tools";
+    public static final String MENU_TOOLS_AUTOSEARCH = "menu.tools.autosearch";
+    public static final String MENU_TOOLS_SELECT_PORT = "menu.tools.selectPort";
+    public static final String MENU_TOOLS_NO_PORTS = "menu.tools.noPorts";
 
     // Status Bar
     // Statusy połączenia

@@ -50,19 +50,28 @@ public class MainWindow extends JFrame {
         // -- Tools Menu / Narzędzia --
         JMenu toolsMenu = new JMenu(languageManager.getString(TranslationKey.MENU_TOOLS));
 
-        JCheckBoxMenuItem autosearchCheckbox = new JCheckBoxMenuItem("auto search?");
-        autosearchCheckbox.setState(arduinoDetector.isAutosearch());
+        JCheckBoxMenuItem autosearchCheckbox = new JCheckBoxMenuItem(languageManager.getString(TranslationKey.MENU_TOOLS_AUTOSEARCH));
+        autosearchCheckbox.setSelected(arduinoDetector.isAutosearch());
         autosearchCheckbox.addActionListener(e -> {
             if (arduinoDetector != null) {
                 arduinoDetector.toggleAutosearch();
-                autosearchCheckbox.setState(arduinoDetector.isAutosearch());
+                autosearchCheckbox.setSelected(arduinoDetector.isAutosearch());
             }
         });
         toolsMenu.add(autosearchCheckbox);
         toolsMenu.addSeparator(); // Linia oddzielająca
 
-        // PodMenu do wyboru portu
-        JMenu selectPortMenu = new JMenu("Wybierz Port");
+        // PodMenu do wyboru portu (wydzielone)
+        toolsMenu.add(buildSelectPortMenu(autosearchCheckbox));
+
+        // Dodanie menu do paska menu
+        menuBar.add(fileMenu);
+        menuBar.add(toolsMenu);
+        setJMenuBar(menuBar);
+    }
+
+    private JMenu buildSelectPortMenu(JCheckBoxMenuItem autosearchCheckbox) {
+        JMenu selectPortMenu = new JMenu(languageManager.getString(TranslationKey.MENU_TOOLS_SELECT_PORT));
 
         selectPortMenu.addMenuListener(new javax.swing.event.MenuListener() {
             @Override
@@ -72,19 +81,18 @@ public class MainWindow extends JFrame {
 
                 if (ports.length > 0) {
                     for (com.fazecast.jSerialComm.SerialPort port : ports) { //każdy port jako klikalna opcja
-                        String portName = port.getSystemPortName() + " (" + port.getPortDescription() + ")" ; //tworzenie nazwy
+                        String portName = port.getSystemPortName() + " (" + port.getPortDescription() + ")"; //tworzenie nazwy
                         JMenuItem portItem = new JMenuItem(portName);
 
                         //Akcja po kliknięciu na port
                         portItem.addActionListener(event -> {
-                           arduinoDetector.forceConnect(port); //
-                           autosearchCheckbox.setState(false); // wyłączenie autowyszukiwania
+                            arduinoDetector.forceConnect(port); //
+                            autosearchCheckbox.setSelected(false); // wyłączenie autowyszukiwania
                         });
                         selectPortMenu.add(portItem);
                     }
-                }
-                else{
-                    JMenuItem noPortsItem = new JMenuItem("Brak dostępnych portów");
+                } else {
+                    JMenuItem noPortsItem = new JMenuItem(languageManager.getString(TranslationKey.MENU_TOOLS_NO_PORTS));
                     noPortsItem.setEnabled(false);
                     selectPortMenu.add(noPortsItem);
                 }
@@ -96,13 +104,7 @@ public class MainWindow extends JFrame {
             @Override public void menuCanceled(javax.swing.event.MenuEvent e) {}
         });
 
-        toolsMenu.add(selectPortMenu); // Dodanie podmenu do menu tools
-
-
-        // Dodanie menu do paska menu
-        menuBar.add(fileMenu);
-        menuBar.add(toolsMenu);
-        setJMenuBar(menuBar);
+        return selectPortMenu;
     }
 
     public void setStatus(org.fesg.service.ConnectionState connectionState) {
