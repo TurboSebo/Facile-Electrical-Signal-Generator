@@ -52,17 +52,20 @@ public class MainWindow extends JFrame {
 
         JCheckBoxMenuItem autosearchCheckbox = new JCheckBoxMenuItem(languageManager.getString(TranslationKey.MENU_TOOLS_AUTOSEARCH));
         autosearchCheckbox.setSelected(arduinoDetector.isAutosearch());
+        // Reakcja na kliknięcie w checkbox -> tylko zmiana stanu w detektorze
         autosearchCheckbox.addActionListener(e -> {
             if (arduinoDetector != null) {
                 arduinoDetector.toggleAutosearch();
-                autosearchCheckbox.setSelected(arduinoDetector.isAutosearch());
             }
         });
+        // Słuchacz odświeżający checkbox przy zmianie stanu w detektorze
+        arduinoDetector.addAutosearchListener(autosearchCheckbox::setSelected);
+
         toolsMenu.add(autosearchCheckbox);
         toolsMenu.addSeparator(); // Linia oddzielająca
 
         // PodMenu do wyboru portu (wydzielone)
-        toolsMenu.add(buildSelectPortMenu(autosearchCheckbox));
+        toolsMenu.add(buildSelectPortMenu());
 
         // Dodanie menu do paska menu
         menuBar.add(fileMenu);
@@ -70,7 +73,7 @@ public class MainWindow extends JFrame {
         setJMenuBar(menuBar);
     }
 
-    private JMenu buildSelectPortMenu(JCheckBoxMenuItem autosearchCheckbox) {
+    private JMenu buildSelectPortMenu() {
         JMenu selectPortMenu = new JMenu(languageManager.getString(TranslationKey.MENU_TOOLS_SELECT_PORT));
 
         selectPortMenu.addMenuListener(new javax.swing.event.MenuListener() {
@@ -86,8 +89,8 @@ public class MainWindow extends JFrame {
 
                         //Akcja po kliknięciu na port
                         portItem.addActionListener(event -> {
-                            arduinoDetector.forceConnect(port); //
-                            autosearchCheckbox.setSelected(false); // wyłączenie autowyszukiwania
+                            arduinoDetector.forceConnect(port); // przełączenie w tryb ręczny -> detektor wyemituje zmianę autosearch
+                            // Nie ustawiamy checkboxa tutaj ręcznie; zrobi to listener.
                         });
                         selectPortMenu.add(portItem);
                     }

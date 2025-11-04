@@ -1,17 +1,16 @@
 package org.fesg.service;
 
 import com.fazecast.jSerialComm.SerialPort;
-import org.fesg.i18n.LanguageManager;
 
 import javax.swing.*;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ArduinoDetector implements Runnable {
 
     private final Consumer<ConnectionState> statusUpdater;
-    private Consumer<String> errorMessageUpdater;
-    private final LanguageManager languageManager;
+    private final Consumer<String> errorMessageUpdater;
 
     private volatile boolean autosearch = false;
     public boolean isAutosearch() {
@@ -23,9 +22,11 @@ public class ArduinoDetector implements Runnable {
     }
     public void setAutosearch(boolean autosearch) {
         this.autosearch = autosearch;
+        notifyAutosearchChanged();
     }
     public void toggleAutosearch() {
         this.autosearch = !this.autosearch;
+        notifyAutosearchChanged();
        // if (this.autosearch) {new Thread(this).start();  } // zakomentowane ze względu, że uruchamiało kolejny, ten sam wątek
     }
 
@@ -38,9 +39,22 @@ public class ArduinoDetector implements Runnable {
     volatile String lastErrorMessage = "";
     volatile String detectedPort = "";
 
+    // --- Słuchacze zmian autosearch ---
+    private final CopyOnWriteArrayList<Consumer<Boolean>> autosearchListeners = new CopyOnWriteArrayList<>();
+    public void addAutosearchListener(Consumer<Boolean> listener) {
+        if (listener != null) autosearchListeners.add(listener);
+    }
+    public void removeAutosearchListener(Consumer<Boolean> listener) {
+        autosearchListeners.remove(listener);
+    }
+    private void notifyAutosearchChanged() {
+        final boolean value = autosearch;
+        // Zapewniamy wykonanie na EDT, bo słuchacz zwykle dotyka UI
+        SwingUtilities.invokeLater(() -> autosearchListeners.forEach(l -> l.accept(value)));
+    }
+
     public ArduinoDetector(Consumer<ConnectionState> statusUpdater, Consumer<String> errorMessageUpdater) {
         this.statusUpdater = statusUpdater;
-        this.languageManager = LanguageManager.getInstance();
         this.errorMessageUpdater = errorMessageUpdater;
     }
 
@@ -75,6 +89,7 @@ public class ArduinoDetector implements Runnable {
 
     public synchronized void stop() {
         autosearch = false;
+        notifyAutosearchChanged();
         if (scanTask != null) {
             scanTask.cancel(true);
             scanTask = null;
@@ -145,7 +160,6 @@ public class ArduinoDetector implements Runnable {
                     if (currentState != ConnectionState.FOUND) {
                         return;
                     }
-                    final int step = i;
                     // Aktualizacja stanu zamiast tekstu
                     SwingUtilities.invokeLater(() -> statusUpdater.accept(ConnectionState.VERIFYING));
                     Thread.sleep(1000);
@@ -182,6 +196,7 @@ public class ArduinoDetector implements Runnable {
         // zatrzymywanie automatycznego skanowania, bo przechodzimy w tryb ręczny
         stop();
         this.autosearch = false;
+        notifyAutosearchChanged();
         System.out.println("Trying to manually connect to arduino with port: " + port.getSystemPortName());
         this.detectedPort = port.getSystemPortName();
         updateState(ConnectionState.FOUND, "");
