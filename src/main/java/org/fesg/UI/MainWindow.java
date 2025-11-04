@@ -44,20 +44,62 @@ public class MainWindow extends JFrame {
 
         JMenu fileMenu = new JMenu(languageManager.getString(TranslationKey.MENU_FILE));
         JMenuItem exitMenu = new JMenuItem(languageManager.getString(TranslationKey.MENU_FILE_EXIT));
+        exitMenu.addActionListener(e -> System.exit(0));
+        fileMenu.add(exitMenu);
+
+        // -- Tools Menu / Narzędzia --
         JMenu toolsMenu = new JMenu(languageManager.getString(TranslationKey.MENU_TOOLS));
+
         JCheckBoxMenuItem autosearchCheckbox = new JCheckBoxMenuItem("auto search?");
         autosearchCheckbox.setState(arduinoDetector.isAutosearch());
-
-
-        exitMenu.addActionListener(e -> System.exit(0));
         autosearchCheckbox.addActionListener(e -> {
             if (arduinoDetector != null) {
                 arduinoDetector.toggleAutosearch();
                 autosearchCheckbox.setState(arduinoDetector.isAutosearch());
             }
         });
-        fileMenu.add(exitMenu);
         toolsMenu.add(autosearchCheckbox);
+        toolsMenu.addSeparator(); // Linia oddzielająca
+
+        // PodMenu do wyboru portu
+        JMenu selectPortMenu = new JMenu("Wybierz Port");
+
+        selectPortMenu.addMenuListener(new javax.swing.event.MenuListener() {
+            @Override
+            public void menuSelected(javax.swing.event.MenuEvent menuEvent) {
+                selectPortMenu.removeAll(); //czyszczenie menu przed wypelnieniem
+                com.fazecast.jSerialComm.SerialPort[] ports = arduinoDetector.getAvailablePorts();
+
+                if (ports.length > 0) {
+                    for (com.fazecast.jSerialComm.SerialPort port : ports) { //każdy port jako klikalna opcja
+                        String portName = port.getSystemPortName() + " (" + port.getPortDescription() + ")" ; //tworzenie nazwy
+                        JMenuItem portItem = new JMenuItem(portName);
+
+                        //Akcja po kliknięciu na port
+                        portItem.addActionListener(event -> {
+                           arduinoDetector.forceConnect(port); //
+                           autosearchCheckbox.setState(false); // wyłączenie autowyszukiwania
+                        });
+                        selectPortMenu.add(portItem);
+                    }
+                }
+                else{
+                    JMenuItem noPortsItem = new JMenuItem("Brak dostępnych portów");
+                    noPortsItem.setEnabled(false);
+                    selectPortMenu.add(noPortsItem);
+                }
+
+            }
+
+            // Te metody muszą być zaimplementowane
+            @Override public void menuDeselected(javax.swing.event.MenuEvent e) {}
+            @Override public void menuCanceled(javax.swing.event.MenuEvent e) {}
+        });
+
+        toolsMenu.add(selectPortMenu); // Dodanie podmenu do menu tools
+
+
+        // Dodanie menu do paska menu
         menuBar.add(fileMenu);
         menuBar.add(toolsMenu);
         setJMenuBar(menuBar);

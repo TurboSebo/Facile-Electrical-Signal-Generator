@@ -18,6 +18,9 @@ public class ArduinoDetector implements Runnable {
         return autosearch;
     }
 
+    public SerialPort[] getAvailablePorts() { // Zwraca listę wszystkich dostępnych portów szeregowych
+        return SerialPort.getCommPorts();
+    }
     public void setAutosearch(boolean autosearch) {
         this.autosearch = autosearch;
     }
@@ -175,18 +178,20 @@ public class ArduinoDetector implements Runnable {
                 + (detectedPort.isEmpty() ? "" : " [Port: " + detectedPort + "]"));
     }
 
-  /*
-    String getStatusText(ConnectionState state) {
-        switch (state) {
-            case SEARCHING: return "szukanie Arduino...";
-            case FOUND: return "Arduino znalezione - weryfikacja...";
-            case CONNECTED: return "Arduino gotowe! [Port: " + detectedPort + "]";
-            case ERROR: return "Błąd - sprawdź połączenie";
-            default: return "Nieznany status";
-        }
+    public synchronized void forceConnect(SerialPort port) {
+        // zatrzymywanie automatycznego skanowania, bo przechodzimy w tryb ręczny
+        stop();
+        this.autosearch = false;
+        System.out.println("Trying to manually connect to arduino with port: " + port.getSystemPortName());
+        this.detectedPort = port.getSystemPortName();
+        updateState(ConnectionState.FOUND, "");
+
+         startVerification();
+
+
+
     }
-*/
-    // usunięto static
+
     public ConnectionState getCurrentState() {return currentState;}
 
     public String getDetectedPort() {return detectedPort;}
