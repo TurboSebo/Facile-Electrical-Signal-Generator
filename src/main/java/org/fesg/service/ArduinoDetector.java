@@ -10,6 +10,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class ArduinoDetector implements Runnable {
 
     private final Consumer<ConnectionState> statusUpdater;
+    private final Consumer<String> statusTextUpdater;
     private final Consumer<String> errorMessageUpdater;
 
     private volatile boolean autosearch = false;
@@ -53,8 +54,9 @@ public class ArduinoDetector implements Runnable {
         SwingUtilities.invokeLater(() -> autosearchListeners.forEach(l -> l.accept(value)));
     }
 
-    public ArduinoDetector(Consumer<ConnectionState> statusUpdater, Consumer<String> errorMessageUpdater) {
+    public ArduinoDetector(Consumer<ConnectionState> statusUpdater, Consumer<String> statusTextUpdater, Consumer<String> errorMessageUpdater) {
         this.statusUpdater = statusUpdater;
+        this.statusTextUpdater = statusTextUpdater; // <-- PRZYPISANIE
         this.errorMessageUpdater = errorMessageUpdater;
     }
 
@@ -154,22 +156,39 @@ public class ArduinoDetector implements Runnable {
     }
 
     private void startVerification() {
+        // Uruchamiamy weryfikację w osobnym, krótkotrwałym wątku
         new Thread(() -> {
             try {
-                for (int i = 1; i <= 3; i++) {
-                    if (currentState != ConnectionState.FOUND) {
-                        return;
+                // 1. Ustaw ogólny stan na VERIFYING (zmieni kolor ikony)
+                updateState(ConnectionState.VERIFYING, "");
+
+                // 2. Utwórz instancję weryfikatora
+                ArduinoVerifier verifier = new ArduinoVerifier();
+
+                // 3. Uruchom weryfikację, przekazując callback dla tekstu
+                boolean isVerified = verifier.verifyConnection(
+                        this.detectedPort,
+                        // Przekazujemy aktualizację tekstu, upewniając się, że działa w wątku Swing
+                        (progressText) -> SwingUtilities.invokeLater(
+                                () -> statusTextUpdater.accept(progressText)
+                        )
+                );
+
+                // 4. Zareaguj na wynik
+                if (isVerified) {
+                    // Sprawdzamy, czy stan się nie zmienił w tle
+                    if (currentState == ConnectionState.VERIFYING) {
+                        updateState(ConnectionState.CONNECTED, "");
+                        arduinoConnected = true;
                     }
-                    // Aktualizacja stanu zamiast tekstu
-                    SwingUtilities.invokeLater(() -> statusUpdater.accept(ConnectionState.VERIFYING));
-                    Thread.sleep(1000);
+                } else {
+                    // Weryfikacja nie powiodła się - przejdź do ERROR
+                    handleError("Urządzenie nie jest naszym Arduino lub błąd komunikacji.");
                 }
-                if (currentState == ConnectionState.FOUND) {
-                    updateState(ConnectionState.CONNECTED, "");
-                    arduinoConnected = true;
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+
+            } catch (Exception e) {
+                // To wyłapuje błędy w samym wątku Javy
+                handleError("Krytyczny błąd weryfikacji: " + e.getMessage());
             }
         }, "arduino-verify").start();
     }

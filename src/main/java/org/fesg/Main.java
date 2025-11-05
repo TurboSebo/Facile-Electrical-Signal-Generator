@@ -19,7 +19,7 @@ public class Main {
 
 
             // Uruchomienie wątku do wykrywania Arduino
-            ArduinoDetector detector = new ArduinoDetector(mainWindow::setStatus, mainWindow::setError);
+            ArduinoDetector detector = new ArduinoDetector(mainWindow::setStatus, mainWindow::setStatusText, mainWindow::setError);
             mainWindow.setArduinoDetector(detector); // Przekazanie detektora do okna
             mainWindow.setVisible(true);
             //zakomentowane bo powiela wątki

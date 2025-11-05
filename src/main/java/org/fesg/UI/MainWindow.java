@@ -119,7 +119,12 @@ public class MainWindow extends JFrame {
         });
     }
 
+    public void setStatusText(String text) {
+        SwingUtilities.invokeLater(() -> statusBar.setStatusText(text));
+    }
+
     public void setError(String error) {
         SwingUtilities.invokeLater(() -> statusBar.setError(error));
     }
 }
+

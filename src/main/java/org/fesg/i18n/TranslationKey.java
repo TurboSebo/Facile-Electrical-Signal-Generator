@@ -29,4 +29,16 @@ public final class TranslationKey {
     public static final String STATUS_VERIFYING = "status.verifying";
     public static final String STATUS_DISCONNECTED = "status.disconnected";
     public static final String STATUS_UNKNOWN = "status.unknown";
+
+    // Verification / Weryfikacja
+    public static final String VERIFICATION_STEP_OPEN = "verification.step.open";
+    public static final String VERIFICATION_STEP_SEND = "verification.step.send";
+    public static final String VERIFICATION_STEP_WAIT = "verification.step.wait";
+
+    public static final String VERIFICATION_ERROR_CANNOT_OPEN = "verification.error.cannot_open";
+    public static final String VERIFICATION_ERROR_UNKNOWN_ID = "verification.error.unknown_id";
+    public static final String VERIFICATION_ERROR_NO_RESPONSE = "verification.error.no_response";
+    public static final String VERIFICATION_ERROR_GENERIC = "verification.error.generic";
+
+    public static final String VERIFICATION_INFO_PORT_CLOSED = "verification.info.port_closed";
 }

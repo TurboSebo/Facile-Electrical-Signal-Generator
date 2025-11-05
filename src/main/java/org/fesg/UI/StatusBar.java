@@ -92,5 +92,19 @@ public class StatusBar extends JPanel {
 
     public void setDetectedPort(String detectedPort) {
         this.detectedPort = detectedPort != null ? detectedPort : "";
+
+        // Jeśli pasek statusu aktualnie pokazuje stan połączenia, zaktualizuj wyświetlany port
+        SwingUtilities.invokeLater(() -> {
+            String connectedPrefix = languageManager.getString(TranslationKey.STATUS_CONNECTED);
+            String current = statusLabel.getText();
+            if (current != null && current.startsWith(connectedPrefix)) {
+                statusLabel.setText(connectedPrefix + " (" + this.detectedPort + ")");
+            }
+        });
     }
+
+    public void setStatusText(String text) {
+        SwingUtilities.invokeLater(() -> statusLabel.setText(text));
+    }
+
 }
