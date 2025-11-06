@@ -179,7 +179,6 @@ public class ArduinoDetector implements Runnable {
                     // Sprawdzamy, czy stan się nie zmienił w tle
                     if (currentState == ConnectionState.VERIFYING) {
                         updateState(ConnectionState.CONNECTED, "");
-                        arduinoConnected = true;
                     }
                 } else {
                     // Weryfikacja nie powiodła się - przejdź do ERROR
@@ -197,6 +196,8 @@ public class ArduinoDetector implements Runnable {
         ConnectionState oldState = currentState;
         currentState = newState;
         lastErrorMessage = errorMessage;
+        // Utrzymuj spójny znacznik połączenia: true tylko dla CONNECTED
+        arduinoConnected = (newState == ConnectionState.CONNECTED);
 
         SwingUtilities.invokeLater(() -> {
             statusUpdater.accept(newState);

@@ -3,6 +3,7 @@ package org.fesg.service;
 
 import com.fazecast.jSerialComm.SerialPort;
 
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.text.MessageFormat;
@@ -11,14 +12,17 @@ import java.util.function.Consumer;
 import org.fesg.i18n.LanguageManager;
 import org.fesg.i18n.TranslationKey;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
 public class ArduinoVerifier {
 
     private static final int BAUD_RATE = 9600;
     private static final String IDENTIFY_COMMAND = "*IDN?\n";
     private static final String EXPECTED_RESPONSE_PREFIX = "MY_FESG_ARDUINO";
+
+    // Czas oczekiwania na pojedyncze czytanie oraz łączny limit odpowiedzi
+    private static final int READ_TIMEOUT_MS = 200;
+    private static final int TOTAL_RESPONSE_TIMEOUT_MS = 2000;
 
     public boolean verifyConnection(String portName, Consumer<String> progressCallBack){
         SerialPort commPort = null;
@@ -29,45 +33,60 @@ public class ArduinoVerifier {
             commPort = SerialPort.getCommPort(portName);
             commPort.setBaudRate(BAUD_RATE);
 
-            progressCallBack.accept(LanguageManager.getInstance().getString(TranslationKey.VERIFICATION_STEP_OPEN));
+            progress(progressCallBack, TranslationKey.VERIFICATION_STEP_OPEN);
 
 
             if(!commPort.openPort(2000)){
                 throw new Exception(LanguageManager.getInstance().getString(TranslationKey.VERIFICATION_ERROR_CANNOT_OPEN));
             }
 
-            commPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_BLOCKING, 1500, 0);
+            // Semi-blocking: czekaj maksymalnie READ_TIMEOUT_MS na min. 1 bajt
+            commPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, READ_TIMEOUT_MS, 0);
 
-            OutputStream output = commPort.getOutputStream();
-            InputStream input = commPort.getInputStream();
+            try (OutputStream output = commPort.getOutputStream();
+                 InputStream input = commPort.getInputStream()) {
 
+                // 2. Wysyłanie komendy identyfikacyjnej
+                progress(progressCallBack, TranslationKey.VERIFICATION_STEP_SEND);
+                commPort.flushIOBuffers();
+                output.write(IDENTIFY_COMMAND.getBytes(StandardCharsets.US_ASCII));
+                output.flush();
 
-            BufferedReader reader = new BufferedReader(new InputStreamReader(input)); // Utwórz "czytnik", który potrafi czytać całe linie
+                // 3. Odbiór i weryfikacja odpowiedzi
+                progress(progressCallBack, TranslationKey.VERIFICATION_STEP_WAIT);
 
+                ByteArrayOutputStream buffer = new ByteArrayOutputStream(128);
+                byte[] tmp = new byte[64];
+                long deadline = System.currentTimeMillis() + TOTAL_RESPONSE_TIMEOUT_MS;
 
-            // 2. Wysyłanie komendy indetyfikacyjnej
-            progressCallBack.accept(LanguageManager.getInstance().getString(TranslationKey.VERIFICATION_STEP_SEND));
-            commPort.flushIOBuffers();
-            output.write(IDENTIFY_COMMAND.getBytes());
-            output.flush();
-
-            progressCallBack.accept(LanguageManager.getInstance().getString(TranslationKey.VERIFICATION_STEP_WAIT)); // 3. Odbiór i weryfikacja odpowiedzi
-
-            // Użycie readLine() zamiast input.read(readBuffer) dzięki czemu zaczeka na całą linię zakończoną znakiem '\n' lub na timeout
-            String response = reader.readLine();
-
-            if (response != null) {
-                response = response.trim(); // readLine() nie zawiera '\n', ale trim() nie zaszkodzi
-                System.out.println("ARDUINO RESPONSE: " + response);
-
-                if (response.startsWith(EXPECTED_RESPONSE_PREFIX)) {  // odpowiedź zawiera prefiks - SUKCES !
-                    success = true;
-                } else {
-                    System.err.println(MessageFormat.format(LanguageManager.getInstance().getString(TranslationKey.VERIFICATION_ERROR_UNKNOWN_ID), response));
+                while (System.currentTimeMillis() < deadline) {
+                    int read = input.read(tmp); // z semi-blocking, czeka do READ_TIMEOUT_MS
+                    if (read > 0) {
+                        buffer.write(tmp, 0, read);
+                        // sprawdź koniec linii
+                        byte[] arr = buffer.toByteArray();
+                        for (byte b : arr) {
+                            if (b == '\n' || b == '\r') {
+                                deadline = 0; // wymuś wyjście z pętli
+                                break;
+                            }
+                        }
+                    }
                 }
-            } else {
-                // readLine() zwrócił null, co oznacza timeout
-                System.err.println(LanguageManager.getInstance().getString(TranslationKey.VERIFICATION_ERROR_NO_RESPONSE));
+
+                String response = new String(buffer.toByteArray(), StandardCharsets.US_ASCII).trim();
+
+                if (!response.isEmpty()) {
+                    System.out.println("ARDUINO RESPONSE: " + response);
+
+                    if (response.startsWith(EXPECTED_RESPONSE_PREFIX)) {  // odpowiedź zawiera prefiks - SUKCES !
+                        success = true;
+                    } else {
+                        System.err.println(MessageFormat.format(LanguageManager.getInstance().getString(TranslationKey.VERIFICATION_ERROR_UNKNOWN_ID), response));
+                    }
+                } else {
+                    System.err.println(LanguageManager.getInstance().getString(TranslationKey.VERIFICATION_ERROR_NO_RESPONSE));
+                }
             }
 
         } catch (Exception e){
@@ -83,4 +102,9 @@ public class ArduinoVerifier {
         return success;
     }
 
+    private static void progress(Consumer<String> progressCallBack, String key) {
+        if (progressCallBack != null) {
+            progressCallBack.accept(LanguageManager.getInstance().getString(key));
+        }
+    }
 }
