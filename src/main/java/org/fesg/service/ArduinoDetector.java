@@ -168,7 +168,7 @@ public class ArduinoDetector implements Runnable {
                 updateState(ConnectionState.VERIFYING, "");
 
                 // 2. Utwórz instancję weryfikatora
-                ArduinoVerifier verifier = new ArduinoVerifier();
+                ArduinoConnectionVerifier verifier = new ArduinoConnectionVerifier();
 
                 // 3. Uruchom weryfikację, przekazując callback dla tekstu
                 boolean isVerified = verifier.verifyConnection(
