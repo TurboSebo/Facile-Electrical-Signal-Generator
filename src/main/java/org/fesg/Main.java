@@ -28,9 +28,8 @@ public class Main {
             );
             mainWindow.setArduinoDetector(detector); // Przekazanie detektora do okna
             detector.start();
-
             mainWindow.setVisible(true);
-            detector.start();
+
 
             //listener do poprawnego zamykania wątku
             mainWindow.addWindowListener(new java.awt.event.WindowAdapter() {
