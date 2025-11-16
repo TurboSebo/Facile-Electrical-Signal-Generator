@@ -1,6 +1,7 @@
 package org.fesg;
 
 import org.fesg.UI.MainWindow;
+import org.fesg.service.ArduinoCommunicator;
 import org.fesg.service.ArduinoDetector;
 
 import javax.swing.*;
@@ -16,16 +17,19 @@ public class Main {
                 throw new RuntimeException(e);
             }
             MainWindow mainWindow = new MainWindow();
-
+            ArduinoCommunicator communicator = new ArduinoCommunicator(mainWindow::setError);
 
             // Uruchomienie wątku do wykrywania Arduino
-            ArduinoDetector detector = new ArduinoDetector(mainWindow::setStatus, mainWindow::setStatusText, mainWindow::setError);
+            ArduinoDetector detector = new ArduinoDetector(
+                    mainWindow::setStatus,
+                    mainWindow::setStatusText,
+                    mainWindow::setError,
+                    communicator
+            );
             mainWindow.setArduinoDetector(detector); // Przekazanie detektora do okna
+            detector.start();
+
             mainWindow.setVisible(true);
-            //zakomentowane bo powiela wątki
-           // Thread detectorThread = new Thread(detector);
-            //detectorThread.setDaemon(true); // Ustawienie wątku jako daemon, aby zakończył się wraz z aplikacją
-            //detectorThread.start();
             detector.start();
 
             //listener do poprawnego zamykania wątku
@@ -33,6 +37,7 @@ public class Main {
                 @Override
                 public void windowClosing(java.awt.event.WindowEvent e) {
                     detector.stop();
+                    communicator.disconnect();
                 }
             });
         });

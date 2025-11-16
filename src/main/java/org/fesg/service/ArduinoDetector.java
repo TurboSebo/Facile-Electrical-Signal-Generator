@@ -12,6 +12,7 @@ public class ArduinoDetector implements Runnable {
     private final Consumer<ConnectionState> statusUpdater;
     private final Consumer<String> statusTextUpdater;
     private final Consumer<String> errorMessageUpdater;
+    private final ArduinoCommunicator communicator;
 
     private volatile boolean autosearch = false;
     public boolean isAutosearch() {
@@ -54,10 +55,14 @@ public class ArduinoDetector implements Runnable {
         SwingUtilities.invokeLater(() -> autosearchListeners.forEach(l -> l.accept(value)));
     }
 
-    public ArduinoDetector(Consumer<ConnectionState> statusUpdater, Consumer<String> statusTextUpdater, Consumer<String> errorMessageUpdater) {
+    public ArduinoDetector(Consumer<ConnectionState> statusUpdater,
+                           Consumer<String> statusTextUpdater,
+                           Consumer<String> errorMessageUpdater,
+                           ArduinoCommunicator communicator) {
         this.statusUpdater = statusUpdater;
-        this.statusTextUpdater = statusTextUpdater; // <-- PRZYPISANIE
+        this.statusTextUpdater = statusTextUpdater;
         this.errorMessageUpdater = errorMessageUpdater;
+        this.communicator = communicator;
     }
 
     // usunięto static

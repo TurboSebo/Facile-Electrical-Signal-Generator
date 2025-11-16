@@ -89,7 +89,26 @@ void loop() {
       Serial.print("ALREADY_CONNECTED");
       Serial.print('\n'); 
       Serial.flush(); // Upewnienie się, że dane zostały wysłane
-    }else{
+    }
+    else if (command.startsWith("DAC:")){
+        command.remove(0,4); 
+        uint16_t dacValue = command.toInt();
+        dac.setVoltage(dacValue, false); // Ustaw napięcie (bez zapisywania do EEPROM
+
+        //
+        Serial.print("OK: DAC set to ");
+        Serial.println(dacValue);
+        Serial.flush();
+    } else if (command.equals("READV?")){
+      int sensorValue = analogRead(VOLTAGE_READ_PIN);
+
+      float voltage = sensorValue * (5.0 /1023.0);
+
+      Serial.println(voltage);
+      Serial.flush();
+      
+    }
+    else{
       Serial.println("Nieznana komenda"); //debug
     }
 
