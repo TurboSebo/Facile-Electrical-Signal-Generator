@@ -20,6 +20,28 @@ public class ArduinoCommunicator {
         this.errorCallback = errorCallback;
     }
 
+    // Przyjmij już zweryfikowany port i skonfiguruj strumienie
+    public synchronized boolean connect(SerialPort port) {
+        try {
+            // Jeśli już coś jest otwarte, zamknij
+            disconnect();
+
+            this.commPort = port;
+            commPort.setBaudRate(BAUD_RATE);
+
+            InputStream in = commPort.getInputStream();
+            this.output = commPort.getOutputStream();
+            this.reader = new BufferedReader(new InputStreamReader(in));
+
+            System.out.println("Połączono z Arduino na porcie: " + commPort.getSystemPortName());
+            return true;
+        } catch (Exception e) {
+            errorCallback.accept("Connection error: " + e.getMessage());
+            disconnect();
+            return false;
+        }
+    }
+
     public void disconnect() {
         try {
             if (output != null) output.close();

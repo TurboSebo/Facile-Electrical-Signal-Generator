@@ -2,7 +2,7 @@ package org.fesg.UI;
 
 import org.fesg.i18n.LanguageManager;
 import org.fesg.i18n.TranslationKey;
-import org.fesg.service.ArduinoDetector;
+import org.fesg.service.ArduinoService;
 
 import javax.swing.*;
 import java.awt.*;
@@ -11,7 +11,7 @@ public class MainWindow extends JFrame {
 
     private final LanguageManager languageManager;
     private StatusBar statusBar;
-    private ArduinoDetector arduinoDetector;
+    private ArduinoService arduinoService;
 
 
     public MainWindow() {
@@ -34,8 +34,8 @@ public class MainWindow extends JFrame {
         add(statusBar, BorderLayout.SOUTH);
     }
 
-    public void setArduinoDetector(ArduinoDetector arduinoDetector) {
-        this.arduinoDetector = arduinoDetector;
+    public void setArduinoService(ArduinoService arduinoService) {
+        this.arduinoService = arduinoService;
         setupMenuBar(); // Przenosimy tutaj, aby mieć pewność, że detektor jest dostępny
     }
 
@@ -50,24 +50,9 @@ public class MainWindow extends JFrame {
         // -- Tools Menu / Narzędzia --
         JMenu toolsMenu = new JMenu(languageManager.getString(TranslationKey.MENU_TOOLS));
 
-        JCheckBoxMenuItem autosearchCheckbox = new JCheckBoxMenuItem(languageManager.getString(TranslationKey.MENU_TOOLS_AUTOSEARCH));
-        autosearchCheckbox.setSelected(arduinoDetector.isAutosearch());
-        // Reakcja na kliknięcie w checkbox -> tylko zmiana stanu w detektorze
-        autosearchCheckbox.addActionListener(e -> {
-            if (arduinoDetector != null) {
-                arduinoDetector.toggleAutosearch();
-            }
-        });
-        // Słuchacz odświeżający checkbox przy zmianie stanu w detektorze
-        arduinoDetector.addAutosearchListener(autosearchCheckbox::setSelected);
-
-        toolsMenu.add(autosearchCheckbox);
-        toolsMenu.addSeparator(); // Linia oddzielająca
-
-        // PodMenu do wyboru portu (wydzielone)
+        // Usuwamy autosearch – zostaje tylko wybór portu
         toolsMenu.add(buildSelectPortMenu());
 
-        // Dodanie menu do paska menu
         menuBar.add(fileMenu);
         menuBar.add(toolsMenu);
         setJMenuBar(menuBar);
@@ -79,18 +64,18 @@ public class MainWindow extends JFrame {
         selectPortMenu.addMenuListener(new javax.swing.event.MenuListener() {
             @Override
             public void menuSelected(javax.swing.event.MenuEvent menuEvent) {
-                selectPortMenu.removeAll(); //czyszczenie menu przed wypelnieniem
-                com.fazecast.jSerialComm.SerialPort[] ports = arduinoDetector.getAvailablePorts();
+                selectPortMenu.removeAll();
+                com.fazecast.jSerialComm.SerialPort[] ports = arduinoService.getAvailablePorts();
 
                 if (ports.length > 0) {
-                    for (com.fazecast.jSerialComm.SerialPort port : ports) { //każdy port jako klikalna opcja
-                        String portName = port.getSystemPortName() + " (" + port.getPortDescription() + ")"; //tworzenie nazwy
+                    for (com.fazecast.jSerialComm.SerialPort port : ports) {
+                        String portName = port.getSystemPortName() + " (" + port.getPortDescription() + ")";
                         JMenuItem portItem = new JMenuItem(portName);
 
-                        //Akcja po kliknięciu na port
                         portItem.addActionListener(event -> {
-                            arduinoDetector.forceConnect(port); // przełączenie w tryb ręczny -> detektor wyemituje zmianę autosearch
-                            // Nie ustawiamy checkboxa tutaj ręcznie; zrobi to listener.
+                            if (arduinoService != null) {
+                                arduinoService.connectToPort(port);
+                            }
                         });
                         selectPortMenu.add(portItem);
                     }
@@ -99,10 +84,8 @@ public class MainWindow extends JFrame {
                     noPortsItem.setEnabled(false);
                     selectPortMenu.add(noPortsItem);
                 }
-
             }
 
-            // Te metody muszą być zaimplementowane
             @Override public void menuDeselected(javax.swing.event.MenuEvent e) {}
             @Override public void menuCanceled(javax.swing.event.MenuEvent e) {}
         });
@@ -112,8 +95,8 @@ public class MainWindow extends JFrame {
 
     public void setStatus(org.fesg.service.ConnectionState connectionState) {
         SwingUtilities.invokeLater(() -> {
-            if (connectionState == org.fesg.service.ConnectionState.CONNECTED && arduinoDetector != null) {
-                statusBar.setDetectedPort(arduinoDetector.getDetectedPort());
+            if (connectionState == org.fesg.service.ConnectionState.CONNECTED && arduinoService != null) {
+                statusBar.setDetectedPort(arduinoService.getDetectedPort());
             }
             statusBar.setStatus(connectionState);
         });
@@ -127,4 +110,3 @@ public class MainWindow extends JFrame {
         SwingUtilities.invokeLater(() -> statusBar.setError(error));
     }
 }
-
