@@ -79,7 +79,7 @@ public class ArduinoService {
                 ArduinoConnectionVerifier verifier = new ArduinoConnectionVerifier();
 
                 // 2. Uruchom weryfikację
-                boolean ok = verifier.verifyConnection(
+                verifiedPort = verifier.verifyAndConnect(
                         this.detectedPort,
                         (progressText) -> SwingUtilities.invokeLater(
                                 () -> statusTextUpdater.accept(progressText)
@@ -87,14 +87,9 @@ public class ArduinoService {
                 );
 
                 // 3. Reakcja na wynik
-                if (ok) {
+                if (verifiedPort != null) {
                     // SUKCES! Przekaż port do Communicatora
-                    verifiedPort = SerialPort.getCommPort(this.detectedPort);
-                    if (!verifiedPort.openPort(2000)) {
-                        handleError("Nie można ponownie otworzyć portu po weryfikacji.");
-                        return;
-                    }
-
+                    //verifiedPort = SerialPort.getCommPort(this.detectedPort);
                     boolean commStarted = communicator.connect(verifiedPort);
                     if (commStarted) {
                         updateState(ConnectionState.CONNECTED, "");

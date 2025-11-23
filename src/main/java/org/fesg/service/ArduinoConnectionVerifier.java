@@ -23,7 +23,7 @@ public class ArduinoConnectionVerifier {
     private static final int READ_TIMEOUT_MS = 200;
     private static final int TOTAL_RESPONSE_TIMEOUT_MS = 2000;
 
-    public boolean verifyConnection(String portName, Consumer<String> progressCallBack){
+    public SerialPort verifyAndConnect(String portName, Consumer<String> progressCallBack){
         SerialPort commPort = null;
         boolean success = false;
 
@@ -90,14 +90,16 @@ public class ArduinoConnectionVerifier {
 
         } catch (Exception e){
             System.err.println(MessageFormat.format(LanguageManager.getInstance().getString(TranslationKey.VERIFICATION_ERROR_GENERIC), e.getMessage()));
+            success = false;
         }finally {
-            if(commPort != null && commPort.isOpen()){
+            if(!success && commPort != null && commPort.isOpen()){
                 commPort.closePort();
                 System.out.println(MessageFormat.format(LanguageManager.getInstance().getString(TranslationKey.VERIFICATION_INFO_PORT_CLOSED), portName));
+                commPort = null;
             }
         }
 
-        return success;
+        return success ? commPort : null;
     }
 
     private static void progress(Consumer<String> progressCallBack, String key) {
