@@ -39,9 +39,9 @@ void setup() {
           // Wysłanie unikalnego identyfikatora plus znak nowej linii
           if (!dac.begin(0x60)) {
             Serial.println("Nie znaleziono MCP4725! Zatrzymałem.");
-            while (1);
+            //while (1);
             }
-           else{
+           //else{
          // Serial.print("OK_")
           Serial.print(DEVICE_ID);
           Serial.print('\n'); 
@@ -51,7 +51,7 @@ void setup() {
           command = "";
         commandReady = false;
         break;
-           }
+           //}
         }else{
           Serial.println("Nieznana komenda"); //debug
         }
