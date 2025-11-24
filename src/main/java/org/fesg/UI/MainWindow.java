@@ -283,7 +283,9 @@ public class MainWindow extends JFrame {
     public void setError(String error) {
         SwingUtilities.invokeLater(() -> {
             statusBar.setError(error);
-            appendToConsole("[BŁĄD]: " + error);
+            if (error != null && !error.isBlank()) {  // Nie loguj pustych lub białych komunikatów jako błędów
+                appendToConsole("[BŁĄD]: " + error);
+            }
         });
     }
 }

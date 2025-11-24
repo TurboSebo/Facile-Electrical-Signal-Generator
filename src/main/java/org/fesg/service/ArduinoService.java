@@ -123,10 +123,10 @@ public class ArduinoService {
 
         SwingUtilities.invokeLater(() -> {
             statusUpdater.accept(newState);
-            if (newState == ConnectionState.ERROR) {
+            if (newState == ConnectionState.ERROR && errorMessage != null && !errorMessage.isBlank()) {
                 errorMessageUpdater.accept(errorMessage);
             } else {
-                errorMessageUpdater.accept("");
+                errorMessageUpdater.accept(""); // Wyczyść etykietę błędu w pasku statusu, ale bez generowania pustych logów
             }
         });
 
