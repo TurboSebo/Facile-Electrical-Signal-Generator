@@ -77,17 +77,25 @@ public class ArduinoCommunicator {
         listenerThread = new Thread(() -> {
             try {
                 String line = reader.readLine();
-               if (line != null) {
-                   line = line.trim();
-                   if (!line.isEmpty() && dataReceivedCallback != null) {
-                       dataReceivedCallback.accept(line);
-                       System.out.println("Odebrano dane: " + line);
-                   }
-               }
+                if (line != null) {
+                    line = line.trim();
+                    if (!line.isEmpty() && dataReceivedCallback != null) {
+                        dataReceivedCallback.accept(line);
+                        System.out.println("Odebrano dane: " + line);
+                    }
+                }
 
-            } catch (IOException e) { //
+            } catch (IOException e) {
                 if (isListening) {
-                    handleConnectionError("Listener IO error: " + e.getMessage()); //TODO: sometimes port closes here
+                    String msg = e.getMessage();
+                    // JSerialComm przy TIMEOUT_READ_SEMI_BLOCKING może rzucić IOException z tekstem o timeoucie
+                    // To jest normalne przy pierwszym połączeniu, gdy Arduino jeszcze nic nie wysłało,
+                    // więc nie traktujemy tego jako utraty połączenia.
+                    if (msg != null && msg.toLowerCase().contains("timed out")) {
+                        System.out.println("Listener timeout (brak danych) – ignoruję: " + msg);
+                    } else {
+                        handleConnectionError("Listener IO error: " + msg);
+                    }
                 }
             } catch (Exception e) {
                 handleConnectionError("Listener error: " + e.getMessage());
