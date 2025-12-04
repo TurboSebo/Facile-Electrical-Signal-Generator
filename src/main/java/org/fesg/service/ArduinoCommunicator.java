@@ -1,125 +1,104 @@
 package org.fesg.service;
 
 import com.fazecast.jSerialComm.SerialPort;
-
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.function.Consumer;
 
 public class ArduinoCommunicator {
-    // Ustawienia portu
     private static final int BAUD_RATE = 9600;
-
     private SerialPort commPort;
     private OutputStream output;
     private BufferedReader reader;
-
-    //funkcje zwrotne (callbacki)
     private final Consumer<String> errorCallback;
     private Consumer<String> dataReceivedCallback;
-
-    private Thread listenerThread; //wątek nasłuchujący
-    private volatile boolean isListening = false; //Flaga sterująca pętlą - volatile, bo może być używane w wielu wątkach
+    private Thread listenerThread;
+    private volatile boolean isListening = false;
 
     public ArduinoCommunicator(Consumer<String> errorCallback) {
         this.errorCallback = errorCallback;
     }
 
-
     public void setDataReceivedCallback(Consumer<String> dataReceivedCallback) {
         this.dataReceivedCallback = dataReceivedCallback;
     }
-    // Przyjmij już zweryfikowany port i skonfiguruj strumienie
+
     public synchronized boolean connect(SerialPort port) {
         try {
-            // Jeśli już coś jest otwarte, zamknij
-            disconnect();
-
+            if (isConnected()) disconnect();
             this.commPort = port;
             commPort.setBaudRate(BAUD_RATE);
-            // Ważne: TIMEOUT_READ_SEMI_BLOCKING pozwala readLine() czekać na dane, ale nie zawiesza całego programu na zawsze
+
+            //  SEMI_BLOCKING ustawiony na 100ms.
+            // readLine rzuci wyjątek, jeśli przez 100ms nic nie przyjdzie - to normalne!
             commPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 100, 0);
 
+            // Ważne: Pobieramy strumienie. Dzięki poprawce w Verifierze, "rura" powinna być drożna.
             InputStream in = commPort.getInputStream();
             this.output = commPort.getOutputStream();
-            this.reader = new BufferedReader(new InputStreamReader(in));
+            this.reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.US_ASCII));
 
-            System.out.println("Połączono z Arduino na porcie: " + commPort.getSystemPortName());
-
-            startListening(); // Rozpocznij nasłuchiwanie danych
+            System.out.println("Communicator: Start na porcie " + commPort.getSystemPortName());
+            startListening();
             return true;
         } catch (Exception e) {
-            errorCallback.accept("Connection error: " + e.getMessage());
+            errorCallback.accept("Błąd connect(): " + e.getMessage());
             disconnect();
             return false;
         }
     }
-        // --- NOWA METODA: Wysyłanie ---
 
     public synchronized void sendData(String data) {
-        if (!isConnected()) {
-            errorCallback.accept("Cannot send data: Not connected to Arduino.");
-        }
+        if (!isConnected()) return;
         try {
-            output.write(data.getBytes());
+            String framed = data.endsWith("\n") ? data : (data + "\n");
+            output.write(framed.getBytes(StandardCharsets.US_ASCII));
             output.flush();
-            System.out.println("Wysłano dane: " + data);
-        } catch (IOException e){
-            handleConnectionError("Send data IO error: " + e.getMessage());
+            System.out.println("TX >> " + framed.trim());
         } catch (Exception e) {
-            handleConnectionError("Send data error: " + e.getMessage());
+            handleConnectionError("Błąd wysyłania: " + e.getMessage());
         }
     }
 
     public synchronized void startListening(){
-        if (isListening) return; // Już nasłuchuje
-
+        if (isListening) return;
         isListening = true;
         listenerThread = new Thread(() -> {
-            try {
-                String line = reader.readLine();
-                if (line != null) {
-                    line = line.trim();
-                    if (!line.isEmpty() && dataReceivedCallback != null) {
-                        dataReceivedCallback.accept(line);
-                        System.out.println("Odebrano dane: " + line);
-                    }
-                }
+            while (isListening && isConnected()) {
+                try {
+                    // To zablokuje się na max 100ms.
+                    String line = reader.readLine();
 
-            } catch (IOException e) {
-                if (isListening) {
-                    String msg = e.getMessage();
-                    // JSerialComm przy TIMEOUT_READ_SEMI_BLOCKING może rzucić IOException z tekstem o timeoucie
-                    // To jest normalne przy pierwszym połączeniu, gdy Arduino jeszcze nic nie wysłało,
-                    // więc nie traktujemy tego jako utraty połączenia.
-                    if (msg != null && msg.toLowerCase().contains("timed out")) {
-                        System.out.println("Listener timeout (brak danych) – ignoruję: " + msg);
-                    } else {
-                        handleConnectionError("Listener IO error: " + msg);
+                    if (line != null) {
+                        line = line.trim();
+                        if (!line.isEmpty() && dataReceivedCallback != null) {
+                            System.out.println("RX << " + line); // Logujemy sukces
+                            dataReceivedCallback.accept(line);
+                        }
                     }
-                }
-            } catch (Exception e) {
-                handleConnectionError("Listener error: " + e.getMessage());
-                if (isListening) {
-                    errorCallback.accept("Błąd odczytu " + e.getMessage());
+                } catch (IOException e) {
+                    /* jSerialComm w trybie SEMI_BLOCKING rzuca wyjątek przy timeoucie.
+                     Trzeba go złapać i dalej puścić pętle.
+                     Nie traktujemy tego jako błędu połączenia!*/
+                    String msg = e.getMessage();
+                    if (msg != null && msg.toLowerCase().contains("timed out")) {
+                        continue; // Po prostu spróbuj czytać jeszcze raz
+                    }
+                    // Inne błędy IO (np. wyrwanie kabla)
+                    if (isListening) handleConnectionError("Błąd IO Listenera: " + e.getMessage());
+                } catch (Exception e) {
+                    if (isListening) handleConnectionError("Błąd Listenera: " + e.getMessage());
                 }
             }
         }, "ArduinoListenerThread");
         listenerThread.start();
     }
 
-
-
     public void disconnect() {
+        isListening = false;
         try {
-            if (output != null) output.close();
-            if (reader != null) reader.close();
-            if (commPort != null && commPort.isOpen()) {
-                commPort.closePort();
-                System.out.println("Port " + commPort.getSystemPortName() + " zamknięty.");
-            }
-        } catch (Exception e) {
-            errorCallback.accept("Disconnection error: " + e.getMessage());
-        }
+            if (commPort != null) commPort.closePort(); // To zamknie też strumienie
+        } catch (Exception e) { /* ignore */ }
         commPort = null;
         reader = null;
         output = null;
@@ -130,8 +109,9 @@ public class ArduinoCommunicator {
     }
 
     private void handleConnectionError(String errorMessage) {
+        if (!isListening) return;
         System.err.println(errorMessage);
-        errorCallback.accept("Utracono połączenie z Arduino.");
-        disconnect(); // Zamknij port po błędzie
+        errorCallback.accept("Rozłączono: " + errorMessage);
+        disconnect();
     }
 }
