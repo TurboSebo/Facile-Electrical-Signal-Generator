@@ -19,16 +19,14 @@ public class MainWindow extends JFrame {
     //Zakładka 1: Manual
     private JSlider dacSlider;
     private JTextField dacValueField;
-    private JLabel voltageCalcLabel; // Pokazuje przeliczone V (np. 2.5V)
+    private JLabel voltageCalcLabel;
     private JLabel voltageDisplayLabel;
     private JButton btnSetDac;
     private JButton btnReadVoltage;
 
-    //Zakładka 2: Generator TODO
+    //Zakładka 2: Generator
     private JButton btnStartSine;
     private JButton btnStopGen;
-
-
 
     public MainWindow() {
         this.languageManager = LanguageManager.getInstance();
@@ -38,24 +36,17 @@ public class MainWindow extends JFrame {
     private void initializeUI() {
         setTitle(languageManager.getString(TranslationKey.APP_TITLE));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(800, 600);
-        setLocationRelativeTo(null); //ustawia okno na środku ekranu
+        setSize(850, 650);
+        setLocationRelativeTo(null);
 
-        //Układ główny
         setLayout(new BorderLayout());
 
-        // -- GŁÓWNY PANEL Z ZAKŁADKAMI --
         JTabbedPane tabbedPane = new JTabbedPane();
         tabbedPane.setFont(new Font("SansSerif", Font.BOLD, 14));
 
-        // Zakładka 1: Sterowanie Ręczne
-        tabbedPane.addTab("Sterowanie reczne", createManualPanel());
-
-        // Zakładka 2: Generator
+        tabbedPane.addTab("Sterowanie Ręczne", createManualPanel());
         tabbedPane.addTab("Generator Fal", createGeneratorPanel());
-
-        // Zakładka 3: Otwieracz Plików
-        tabbedPane.addTab("Otwieracz Plików", createFilePlayerPanel());
+        tabbedPane.addTab("Odtwarzacz Plików", createFilePlayerPanel());
 
         JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
         splitPane.setTopComponent(tabbedPane);
@@ -63,18 +54,46 @@ public class MainWindow extends JFrame {
         splitPane.setResizeWeight(0.7);
 
         add(splitPane, BorderLayout.CENTER);
-        //  -- PASEK STATUSU
+
         statusBar = new StatusBar();
         add(statusBar, BorderLayout.SOUTH);
     }
 
+    // --- KLUCZOWA ZMIANA: Podpinamy listenera ---
+    public void setArduinoService(ArduinoService arduinoService) {
+        this.arduinoService = arduinoService;
 
-    private JPanel createManualPanel() { // ---  ZAKŁADKA MANUAL ---
+        // Rejestrujemy metodę, która odbierze dane z Arduino
+        this.arduinoService.setMessageListener(this::handleIncomingData);
+
+        setupMenuBar();
+    }
+
+    // --- KLUCZOWA ZMIANA: Obsługa danych przychodzących ---
+    private void handleIncomingData(String data) {
+        SwingUtilities.invokeLater(() -> {
+            // Logika: Jeśli to liczba (np. "2.54"), wyświetl na dużym ekranie.
+            // Jeśli tekst (np. "OK: DAC set"), wypisz w konsoli.
+            try {
+                // Próba konwersji na liczbę
+                float voltage = Float.parseFloat(data);
+                // Jeśli się udało, to znaczy, że to odczyt napięcia
+                voltageDisplayLabel.setText(String.format("%.2f V", voltage));
+                appendToConsole("<<< [ODCZYT]: " + data + " V");
+            } catch (NumberFormatException e) {
+                // To nie liczba, więc zwykły komunikat tekstowy
+                appendToConsole("<<< " + data);
+            }
+        });
+    }
+
+    private JPanel createManualPanel() {
         JPanel mainPanel = new JPanel(new GridLayout(1, 2, 10, 10));
         mainPanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), "Manual"));
 
+        // LEWA STRONA: DAC
         JPanel dacPanel = new JPanel(new GridBagLayout());
-        dacPanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), "Wyjscie napiecia DAC"));
+        dacPanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), "Wyjście napięcia DAC"));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 5, 10, 5);
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -94,60 +113,57 @@ public class MainWindow extends JFrame {
         dacSlider.addChangeListener(e ->{
             int value = dacSlider.getValue();
             dacValueField.setText(String.valueOf(value));
-
-            double voltage = (value / 4095.0) *5.0; //przeliczanie na teorytyczne napięcie dla 5V
+            double voltage = (value / 4095.0) * 5.0;
             voltageCalcLabel.setText(String.format("~ %.2f V", voltage));
+        });
 
-        });// Logika suwaka
-
-        btnSetDac = new JButton("USTAW wyjscie");
+        btnSetDac = new JButton("USTAW WYJŚCIE");
         btnSetDac.setFont(new Font("SansSerif", Font.BOLD, 12));
         btnSetDac.setPreferredSize(new Dimension(150, 40));
+        // --- KLUCZOWA ZMIANA: WYSYŁANIE ---
         btnSetDac.addActionListener(e -> {
            String value = dacValueField.getText();
-           appendToConsole(">>> [CMD] Ustawiam DAC na: \" + value");
-           //arduinoService.send("DAC:" + value);
+           appendToConsole(">>> [CMD] Ustawiam DAC na: " + value);
+           if(arduinoService != null) {
+               arduinoService.send("DAC:" + value);
+           }
         });
-        //Układanie elementów DAC
+
         gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 3;
         dacPanel.add(new JLabel("Poziom (0-4095):"), gbc);
-
         gbc.gridy = 1;
         dacPanel.add(dacSlider, gbc);
-
         gbc.gridy = 2; gbc.gridwidth = 1;
         dacPanel.add(dacValueField, gbc);
-
         gbc.gridx = 1;
         dacPanel.add(new JLabel("="), gbc);
-
         gbc.gridx = 2;
         dacPanel.add(voltageCalcLabel, gbc);
-
         gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 3;
         dacPanel.add(btnSetDac, gbc);
 
-        // Prawa strona - Odczyt
-
+        // PRAWA STRONA: ODCZYT
         JPanel sensorPanel = new JPanel(new GridBagLayout());
-        sensorPanel.setBorder(BorderFactory.createTitledBorder("Wejscie analogowe (A0)"));
+        sensorPanel.setBorder(BorderFactory.createTitledBorder("Wejście analogowe (A0)"));
 
         voltageDisplayLabel = new JLabel("--- V");
         voltageDisplayLabel.setFont(new Font("SansSerif", Font.BOLD, 48));
         voltageDisplayLabel.setForeground(new Color(0, 100, 200));
 
-        btnReadVoltage = new JButton("Read Voltage");
+        btnReadVoltage = new JButton("POBIERZ NAPIĘCIE");
         btnReadVoltage.setPreferredSize(new Dimension(150, 40));
+        // --- KLUCZOWA ZMIANA: WYSYŁANIE ---
         btnReadVoltage.addActionListener(e -> {
-            System.out.println("napiecie?");
-            //appendToConsonsole(">>> [CMD] Pytam o napiecie");
+            appendToConsole(">>> [CMD] Pytam o napięcie...");
+            if(arduinoService != null) {
+                arduinoService.send("READV?");
+            }
         });
 
         GridBagConstraints gbc2 = new GridBagConstraints();
         gbc2.insets = new Insets(10, 10, 10, 10);
         gbc2.gridx = 0; gbc2.gridy = 0;
         sensorPanel.add(voltageDisplayLabel, gbc2);
-
         gbc2.gridy = 1;
         sensorPanel.add(btnReadVoltage, gbc2);
 
@@ -156,15 +172,13 @@ public class MainWindow extends JFrame {
 
         return mainPanel;
     }
-    // --- ZAKŁADKA GENERATOR TODO
+
     private JPanel createGeneratorPanel() {
         JPanel generatorPanel = new JPanel(new GridBagLayout());
         generatorPanel.add(new JLabel("Tutaj będzie panel generowania sinusoidy i trójkąta"));
-        // TODO: wykresy, przyciski...
         return generatorPanel;
     }
 
-    // --- Zakładka  OTWIERACZ PLIKÓW---
     private JPanel createFilePlayerPanel() {
         JPanel filePanel = new JPanel(new GridBagLayout());
         filePanel.add(new JLabel("Tu będzie możliwość wczytania pliku CSV/TXT"));
@@ -173,7 +187,7 @@ public class MainWindow extends JFrame {
 
     private JPanel createConsolePanel() {
         JPanel consolePanel = new JPanel(new BorderLayout());
-        consolePanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), "Console"));
+        consolePanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), "Konsola"));
         consolePanel.setPreferredSize(new Dimension(800, 150));
 
         consoleArea =  new JTextArea();
@@ -188,28 +202,19 @@ public class MainWindow extends JFrame {
         return consolePanel;
     }
 
-
-    public void setArduinoService(ArduinoService arduinoService) {
-        this.arduinoService = arduinoService;
-        setupMenuBar(); // Przenosimy tutaj, aby mieć pewność, że detektor jest dostępny
-    }
-
     private void setupMenuBar() {
         JMenuBar menuBar = new JMenuBar();
-
         JMenu fileMenu = new JMenu(languageManager.getString(TranslationKey.MENU_FILE));
         JMenuItem exitMenu = new JMenuItem(languageManager.getString(TranslationKey.MENU_FILE_EXIT));
         exitMenu.addActionListener(e -> System.exit(0));
         fileMenu.add(exitMenu);
 
-        // -- Tools Menu / Narzędzia --
         JMenu toolsMenu = new JMenu(languageManager.getString(TranslationKey.MENU_TOOLS));
         toolsMenu.add(buildSelectPortMenu());
         toolsMenu.addSeparator();
-        JMenuItem clearConsoleItem = new JMenuItem("wyczyśc konsole");
+        JMenuItem clearConsoleItem = new JMenuItem("Wyczyść konsolę");
         clearConsoleItem.addActionListener(e -> consoleArea.setText(""));
         toolsMenu.add(clearConsoleItem);
-
 
         menuBar.add(fileMenu);
         menuBar.add(toolsMenu);
@@ -218,23 +223,18 @@ public class MainWindow extends JFrame {
 
     private JMenu buildSelectPortMenu() {
         JMenu selectPortMenu = new JMenu(languageManager.getString(TranslationKey.MENU_TOOLS_SELECT_PORT));
-
         selectPortMenu.addMenuListener(new javax.swing.event.MenuListener() {
             @Override
             public void menuSelected(javax.swing.event.MenuEvent menuEvent) {
                 selectPortMenu.removeAll();
+                if (arduinoService == null) return;
                 com.fazecast.jSerialComm.SerialPort[] ports = arduinoService.getAvailablePorts();
 
                 if (ports.length > 0) {
                     for (com.fazecast.jSerialComm.SerialPort port : ports) {
                         String portName = port.getSystemPortName() + " (" + port.getPortDescription() + ")";
                         JMenuItem portItem = new JMenuItem(portName);
-
-                        portItem.addActionListener(event -> {
-                            if (arduinoService != null) {
-                                arduinoService.connectToPort(port);
-                            }
-                        });
+                        portItem.addActionListener(event -> arduinoService.connectToPort(port));
                         selectPortMenu.add(portItem);
                     }
                 } else {
@@ -243,19 +243,19 @@ public class MainWindow extends JFrame {
                     selectPortMenu.add(noPortsItem);
                 }
             }
-
             @Override public void menuDeselected(javax.swing.event.MenuEvent e) {}
             @Override public void menuCanceled(javax.swing.event.MenuEvent e) {}
         });
-
         return selectPortMenu;
     }
+
     public void appendToConsole(String text){
         SwingUtilities.invokeLater(() -> {
             consoleArea.append(text + "\n");
             consoleArea.setCaretPosition(consoleArea.getDocument().getLength());
         });
     }
+
     public void setStatus(org.fesg.service.ConnectionState connectionState) {
         SwingUtilities.invokeLater(() -> {
             if (connectionState == org.fesg.service.ConnectionState.CONNECTED && arduinoService != null) {
@@ -268,11 +268,12 @@ public class MainWindow extends JFrame {
             statusBar.setStatus(connectionState);
         });
     }
+
     private void enableControls(boolean enable) {
         if (btnSetDac != null) btnSetDac.setEnabled(enable);
         if (btnReadVoltage != null) btnReadVoltage.setEnabled(enable);
-        // Tu będzie włączanie / wyłączanie przycisków z innych zakładek
     }
+
     public void setStatusText(String text) {
         SwingUtilities.invokeLater(() -> {
             statusBar.setStatusText(text);
@@ -283,7 +284,7 @@ public class MainWindow extends JFrame {
     public void setError(String error) {
         SwingUtilities.invokeLater(() -> {
             statusBar.setError(error);
-            if (error != null && !error.isBlank()) {  // Nie loguj pustych lub białych komunikatów jako błędów
+            if (error != null && !error.isBlank()) {
                 appendToConsole("[BŁĄD]: " + error);
             }
         });
