@@ -15,7 +15,7 @@ public class ArduinoConnectionVerifier {
 
     private static final int BAUD_RATE = 9600;
     private static final String IDENTIFY_COMMAND = "*IDN?\n";
-    private static final String EXPECTED_RESPONSE_PREFIX = "MY_FESG_ARDUINO";
+    private static final String EXPECTED_RESPONSE_PREFIX = "MY_FESG_ARDUINO_V1.1_WAVE";
     private static final int READ_TIMEOUT_MS = 200;
     private static final int TOTAL_RESPONSE_TIMEOUT_MS = 2000;
 
