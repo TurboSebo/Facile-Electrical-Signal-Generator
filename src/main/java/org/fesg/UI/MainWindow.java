@@ -13,10 +13,10 @@ public class MainWindow extends JFrame {
     private StatusBar statusBar;
     private ArduinoService arduinoService;
 
-    // Komponenty UI
+    // --- Komponenty UI ---
     private JTextArea consoleArea;
 
-    //Zakładka 1: Manual
+    // Zakładka 1: Manual
     private JSlider dacSlider;
     private JTextField dacValueField;
     private JLabel voltageCalcLabel;
@@ -24,9 +24,14 @@ public class MainWindow extends JFrame {
     private JButton btnSetDac;
     private JButton btnReadVoltage;
 
-    //Zakładka 2: Generator
+    // Zakładka 2: Generator (Nowe pola)
+    private JTextField freqField;
+    private JTextField burstField;
     private JButton btnStartSine;
     private JButton btnStopGen;
+    private JButton btnOnce;
+    private JButton btnBurst;
+    private JButton btnSetFreq;
 
     public MainWindow() {
         this.languageManager = LanguageManager.getInstance();
@@ -36,7 +41,7 @@ public class MainWindow extends JFrame {
     private void initializeUI() {
         setTitle(languageManager.getString(TranslationKey.APP_TITLE));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(850, 650);
+        setSize(900, 700); // Nieco powiększyłem okno
         setLocationRelativeTo(null);
 
         setLayout(new BorderLayout());
@@ -45,7 +50,7 @@ public class MainWindow extends JFrame {
         tabbedPane.setFont(new Font("SansSerif", Font.BOLD, 14));
 
         tabbedPane.addTab("Sterowanie Ręczne", createManualPanel());
-        tabbedPane.addTab("Generator Fal", createGeneratorPanel());
+        tabbedPane.addTab("Generator Fal", createGeneratorPanel()); // Tu jest nowość
         tabbedPane.addTab("Odtwarzacz Plików", createFilePlayerPanel());
 
         JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
@@ -59,27 +64,26 @@ public class MainWindow extends JFrame {
         add(statusBar, BorderLayout.SOUTH);
     }
 
-    // --- KLUCZOWA ZMIANA: Podpinamy listenera ---
     public void setArduinoService(ArduinoService arduinoService) {
         this.arduinoService = arduinoService;
-
         // Rejestrujemy metodę, która odbierze dane z Arduino
         this.arduinoService.setMessageListener(this::handleIncomingData);
-
         setupMenuBar();
     }
 
-    // --- KLUCZOWA ZMIANA: Obsługa danych przychodzących ---
     private void handleIncomingData(String data) {
         SwingUtilities.invokeLater(() -> {
-            // Logika: Jeśli to liczba (np. "2.54"), wyświetl na dużym ekranie.
-            // Jeśli tekst (np. "OK: DAC set"), wypisz w konsoli.
+            // Jeśli Arduino zwraca czystą liczbę (np. 2.54), aktualizujemy etykietę napięcia
+            // Jeśli zwraca komunikat (np. CMD: START OK), wypisujemy do konsoli
             try {
-                // Próba konwersji na liczbę
-                float voltage = Float.parseFloat(data);
-                // Jeśli się udało, to znaczy, że to odczyt napięcia
-                voltageDisplayLabel.setText(String.format("%.2f V", voltage));
-                appendToConsole("<<< [ODCZYT]: " + data + " V");
+                // Sprawdzamy, czy to liczba (tylko jeśli jest krótka, by uniknąć pomyłek)
+                if (data.length() < 8) {
+                    float voltage = Float.parseFloat(data);
+                    voltageDisplayLabel.setText(String.format("%.3f V", voltage));
+                    appendToConsole("<<< [ADC]: " + data + " V");
+                } else {
+                    throw new NumberFormatException(); // Traktuj jako tekst
+                }
             } catch (NumberFormatException e) {
                 // To nie liczba, więc zwykły komunikat tekstowy
                 appendToConsole("<<< " + data);
@@ -87,6 +91,7 @@ public class MainWindow extends JFrame {
         });
     }
 
+    // --- ZAKŁADKA 1: MANUAL ---
     private JPanel createManualPanel() {
         JPanel mainPanel = new JPanel(new GridLayout(1, 2, 10, 10));
         mainPanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), "Manual"));
@@ -120,11 +125,13 @@ public class MainWindow extends JFrame {
         btnSetDac = new JButton("USTAW WYJŚCIE");
         btnSetDac.setFont(new Font("SansSerif", Font.BOLD, 12));
         btnSetDac.setPreferredSize(new Dimension(150, 40));
-        // --- KLUCZOWA ZMIANA: WYSYŁANIE ---
+
         btnSetDac.addActionListener(e -> {
            String value = dacValueField.getText();
            appendToConsole(">>> [CMD] Ustawiam DAC na: " + value);
            if(arduinoService != null) {
+               // Przy ręcznym ustawieniu Arduino samo zrobi STOP generatora,
+               // ale dla porządku w Javie też możemy o tym wiedzieć.
                arduinoService.send("DAC:" + value);
            }
         });
@@ -152,7 +159,7 @@ public class MainWindow extends JFrame {
 
         btnReadVoltage = new JButton("POBIERZ NAPIĘCIE");
         btnReadVoltage.setPreferredSize(new Dimension(150, 40));
-        // --- KLUCZOWA ZMIANA: WYSYŁANIE ---
+
         btnReadVoltage.addActionListener(e -> {
             appendToConsole(">>> [CMD] Pytam o napięcie...");
             if(arduinoService != null) {
@@ -173,9 +180,112 @@ public class MainWindow extends JFrame {
         return mainPanel;
     }
 
+    // --- ZAKŁADKA 2: GENERATOR (ZIMPLEMENTOWANA) ---
     private JPanel createGeneratorPanel() {
         JPanel generatorPanel = new JPanel(new GridBagLayout());
-        generatorPanel.add(new JLabel("Tutaj będzie panel generowania sinusoidy i trójkąta"));
+        generatorPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        // 1. SEKCJA CZĘSTOTLIWOŚCI
+        JPanel freqPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        freqPanel.setBorder(BorderFactory.createTitledBorder("Konfiguracja"));
+
+        freqField = new JTextField("1.0", 5);
+        freqField.setFont(new Font("Monospaced", Font.BOLD, 16));
+        btnSetFreq = new JButton("Ustaw Hz");
+
+        btnSetFreq.addActionListener(e -> {
+            try {
+                String val = freqField.getText().replace(",", "."); // Zamień przecinek na kropkę
+                float f = Float.parseFloat(val);
+                if (arduinoService != null) {
+                    arduinoService.send("FREQ " + f);
+                    appendToConsole(">>> [GEN] Ustawianie częstotliwości: " + f + " Hz");
+                }
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "Podaj poprawną liczbę (np. 1.5)", "Błąd", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        freqPanel.add(new JLabel("Częstotliwość (Hz): "));
+        freqPanel.add(freqField);
+        freqPanel.add(btnSetFreq);
+
+        // 2. SEKCJA GŁÓWNA (Start/Stop)
+        JPanel controlPanel = new JPanel(new GridLayout(1, 3, 10, 0));
+        controlPanel.setBorder(BorderFactory.createTitledBorder("Sterowanie Ciągłe"));
+
+        btnStartSine = new JButton("START (Ciągły)");
+        btnStartSine.setBackground(new Color(150, 255, 150));
+        btnStartSine.addActionListener(e -> {
+            if (arduinoService != null) {
+                arduinoService.send("START");
+                appendToConsole(">>> [GEN] Start trybu ciągłego");
+            }
+        });
+
+        btnStopGen = new JButton("STOP");
+        btnStopGen.setBackground(new Color(255, 150, 150));
+        btnStopGen.addActionListener(e -> {
+            if (arduinoService != null) {
+                arduinoService.send("STOP");
+                appendToConsole(">>> [GEN] Zatrzymanie");
+            }
+        });
+
+        btnOnce = new JButton("JEDEN CYKL");
+        btnOnce.addActionListener(e -> {
+            if (arduinoService != null) {
+                arduinoService.send("ONCE");
+                appendToConsole(">>> [GEN] Wyzwolenie pojedynczego cyklu");
+            }
+        });
+
+        controlPanel.add(btnStartSine);
+        controlPanel.add(btnStopGen);
+        controlPanel.add(btnOnce);
+
+        // 3. SEKCJA BURST (Seria)
+        JPanel burstPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        burstPanel.setBorder(BorderFactory.createTitledBorder("Tryb Serii (Burst)"));
+
+        burstField = new JTextField("3", 4);
+        burstField.setFont(new Font("Monospaced", Font.BOLD, 16));
+        btnBurst = new JButton("WYKONAJ SERIĘ");
+
+        btnBurst.addActionListener(e -> {
+            try {
+                int count = Integer.parseInt(burstField.getText().trim());
+                if (arduinoService != null) {
+                    arduinoService.send("BURST " + count);
+                    appendToConsole(">>> [GEN] Seria: " + count + " powtórzeń");
+                }
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "Podaj liczbę całkową!", "Błąd", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        burstPanel.add(new JLabel("Ilość powtórzeń: "));
+        burstPanel.add(burstField);
+        burstPanel.add(btnBurst);
+
+        // Układanie paneli na zakładce
+        gbc.gridx = 0; gbc.gridy = 0;
+        generatorPanel.add(freqPanel, gbc);
+
+        gbc.gridy = 1;
+        generatorPanel.add(controlPanel, gbc);
+
+        gbc.gridy = 2;
+        generatorPanel.add(burstPanel, gbc);
+
+        // Pusty panel wypychający resztę do góry
+        gbc.gridy = 3; gbc.weighty = 1.0;
+        generatorPanel.add(new JPanel(), gbc);
+
         return generatorPanel;
     }
 
@@ -188,7 +298,7 @@ public class MainWindow extends JFrame {
     private JPanel createConsolePanel() {
         JPanel consolePanel = new JPanel(new BorderLayout());
         consolePanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), "Konsola"));
-        consolePanel.setPreferredSize(new Dimension(800, 150));
+        consolePanel.setPreferredSize(new Dimension(800, 200));
 
         consoleArea =  new JTextArea();
         consoleArea.setEditable(false);
@@ -272,6 +382,13 @@ public class MainWindow extends JFrame {
     private void enableControls(boolean enable) {
         if (btnSetDac != null) btnSetDac.setEnabled(enable);
         if (btnReadVoltage != null) btnReadVoltage.setEnabled(enable);
+
+        // Generator controls
+        if (btnStartSine != null) btnStartSine.setEnabled(enable);
+        if (btnStopGen != null) btnStopGen.setEnabled(enable);
+        if (btnOnce != null) btnOnce.setEnabled(enable);
+        if (btnBurst != null) btnBurst.setEnabled(enable);
+        if (btnSetFreq != null) btnSetFreq.setEnabled(enable);
     }
 
     public void setStatusText(String text) {
