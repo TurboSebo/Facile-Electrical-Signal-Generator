@@ -1,5 +1,7 @@
 package org.fesg.UI;
 
+import org.fesg.i18n.LanguageManager;
+import org.fesg.i18n.TranslationKey;
 import org.fesg.service.ArduinoCommands;
 import org.fesg.service.ArduinoService;
 
@@ -9,6 +11,7 @@ import java.awt.*;
 public class ManualControlPanel extends JPanel {
 
     private final ConsoleLogger consoleLogger;
+    private final LanguageManager languageManager = LanguageManager.getInstance();
     private ArduinoService arduinoService;
 
     private JSlider dacSlider;
@@ -26,10 +29,14 @@ public class ManualControlPanel extends JPanel {
 
     private void initUI() {
         setLayout(new GridLayout(1, 2, 10, 10));
-        setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), "Manual"));
+        setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createEtchedBorder(),
+                languageManager.getString(TranslationKey.PANEL_MANUAL_TITLE)));
 
         JPanel dacPanel = new JPanel(new GridBagLayout());
-        dacPanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), "Wyjście napięcia DAC"));
+        dacPanel.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createEtchedBorder(),
+                languageManager.getString(TranslationKey.PANEL_MANUAL_DAC_TITLE)));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 5, 10, 5);
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -53,7 +60,7 @@ public class ManualControlPanel extends JPanel {
             voltageCalcLabel.setText(String.format("~ %.2f V", voltage));
         });
 
-        btnSetDac = new JButton("USTAW WYJŚCIE");
+        btnSetDac = new JButton(languageManager.getString(TranslationKey.PANEL_MANUAL_BUTTON_SET_OUTPUT));
         btnSetDac.setFont(new Font("SansSerif", Font.BOLD, 12));
         btnSetDac.setPreferredSize(new Dimension(150, 40));
 
@@ -66,7 +73,7 @@ public class ManualControlPanel extends JPanel {
         });
 
         gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 3;
-        dacPanel.add(new JLabel("Poziom (0-4095):"), gbc);
+        dacPanel.add(new JLabel(languageManager.getString(TranslationKey.PANEL_MANUAL_DAC_LEVEL_LABEL)), gbc);
         gbc.gridy = 1;
         dacPanel.add(dacSlider, gbc);
         gbc.gridy = 2; gbc.gridwidth = 1;
@@ -79,13 +86,14 @@ public class ManualControlPanel extends JPanel {
         dacPanel.add(btnSetDac, gbc);
 
         JPanel sensorPanel = new JPanel(new GridBagLayout());
-        sensorPanel.setBorder(BorderFactory.createTitledBorder("Wejście analogowe (A0)"));
+        sensorPanel.setBorder(BorderFactory.createTitledBorder(
+                languageManager.getString(TranslationKey.PANEL_MANUAL_ANALOG_INPUT_TITLE)));
 
         voltageDisplayLabel = new JLabel("--- V");
         voltageDisplayLabel.setFont(new Font("SansSerif", Font.BOLD, 48));
         voltageDisplayLabel.setForeground(new Color(0, 100, 200));
 
-        btnReadVoltage = new JButton("POBIERZ NAPIĘCIE");
+        btnReadVoltage = new JButton(languageManager.getString(TranslationKey.PANEL_MANUAL_BUTTON_READ_VOLTAGE));
         btnReadVoltage.setPreferredSize(new Dimension(150, 40));
 
         btnReadVoltage.addActionListener(e -> {

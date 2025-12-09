@@ -1,5 +1,8 @@
 package org.fesg.UI;
 
+import org.fesg.i18n.LanguageManager;
+import org.fesg.i18n.TranslationKey;
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -9,9 +12,10 @@ import java.awt.*;
  */
 public class FilePlayerPanel extends JPanel {
 
+    private final LanguageManager languageManager = LanguageManager.getInstance();
+
     public FilePlayerPanel() {
         setLayout(new GridBagLayout());
-        add(new JLabel("Tu będzie możliwość wczytania pliku CSV/TXT"));
+        add(new JLabel(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_PLACEHOLDER)));
     }
 }
-

@@ -1,5 +1,6 @@
 package org.fesg.UI;
 
+import org.fesg.i18n.AppLanguage;
 import org.fesg.i18n.LanguageManager;
 import org.fesg.i18n.TranslationKey;
 import org.fesg.service.ArduinoService;
@@ -39,9 +40,9 @@ public class MainWindow extends JFrame implements ConsoleLogger {
         generatorPanel = new GeneratorPanel(this, arduinoService);
         filePlayerPanel = new FilePlayerPanel();
 
-        tabbedPane.addTab("Sterowanie Ręczne", manualPanel);
-        tabbedPane.addTab("Generator Fal", generatorPanel);
-        tabbedPane.addTab("Odtwarzacz Plików", filePlayerPanel);
+        tabbedPane.addTab(languageManager.getString(TranslationKey.TAB_MANUAL_CONTROL), manualPanel);
+        tabbedPane.addTab(languageManager.getString(TranslationKey.TAB_WAVE_GENERATOR), generatorPanel);
+        tabbedPane.addTab(languageManager.getString(TranslationKey.TAB_FILE_PLAYER), filePlayerPanel);
 
         JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
         splitPane.setTopComponent(tabbedPane);
@@ -53,6 +54,65 @@ public class MainWindow extends JFrame implements ConsoleLogger {
 
         statusBar = new StatusBar();
         add(statusBar, BorderLayout.SOUTH);
+
+        setupMenuBar();
+    }
+
+    private void setupMenuBar() {
+        JMenuBar menuBar = new JMenuBar();
+
+        JMenu fileMenu = new JMenu(languageManager.getString(TranslationKey.MENU_FILE));
+        JMenuItem exitMenu = new JMenuItem(languageManager.getString(TranslationKey.MENU_FILE_EXIT));
+        exitMenu.addActionListener(e -> System.exit(0));
+        fileMenu.add(exitMenu);
+
+        JMenu toolsMenu = new JMenu(languageManager.getString(TranslationKey.MENU_TOOLS));
+        toolsMenu.add(buildSelectPortMenu());
+        toolsMenu.addSeparator();
+        JMenuItem clearConsoleItem = new JMenuItem(languageManager.getString(TranslationKey.MENU_TOOLS_CLEAR_CONSOLE));
+        clearConsoleItem.addActionListener(e -> consolePanel.clear());
+        toolsMenu.add(clearConsoleItem);
+
+        // Podmenu języka wewnątrz "Narzędzia"
+        JMenu languageMenu = new JMenu(languageManager.getString(TranslationKey.MENU_LANGUAGE));
+        JRadioButtonMenuItem langPl = new JRadioButtonMenuItem(languageManager.getString(TranslationKey.MENU_LANGUAGE_PL));
+        JRadioButtonMenuItem langEn = new JRadioButtonMenuItem(languageManager.getString(TranslationKey.MENU_LANGUAGE_EN));
+
+        ButtonGroup langGroup = new ButtonGroup();
+        langGroup.add(langPl);
+        langGroup.add(langEn);
+
+        // Domyślnie PL
+        langPl.setSelected(true);
+
+        langPl.addActionListener(e -> changeLanguage(AppLanguage.PL));
+        langEn.addActionListener(e -> changeLanguage(AppLanguage.EN));
+
+        languageMenu.add(langPl);
+        languageMenu.add(langEn);
+        toolsMenu.addSeparator();
+        toolsMenu.add(languageMenu);
+
+        menuBar.add(fileMenu);
+        menuBar.add(toolsMenu);
+        setJMenuBar(menuBar);
+    }
+
+    private void changeLanguage(AppLanguage language) {
+        languageManager.setLanguage(language);
+        SwingUtilities.invokeLater(this::refreshTexts);
+    }
+
+    private void refreshTexts() {
+        setTitle(languageManager.getString(TranslationKey.APP_TITLE));
+
+        if (getJMenuBar() != null) {
+            setupMenuBar();
+        }
+
+        statusBar.setStatus();
+        revalidate();
+        repaint();
     }
 
     public void setArduinoService(ArduinoService arduinoService) {
@@ -79,25 +139,6 @@ public class MainWindow extends JFrame implements ConsoleLogger {
                 appendToConsole("<<< " + data);
             }
         });
-    }
-
-    private void setupMenuBar() {
-        JMenuBar menuBar = new JMenuBar();
-        JMenu fileMenu = new JMenu(languageManager.getString(TranslationKey.MENU_FILE));
-        JMenuItem exitMenu = new JMenuItem(languageManager.getString(TranslationKey.MENU_FILE_EXIT));
-        exitMenu.addActionListener(e -> System.exit(0));
-        fileMenu.add(exitMenu);
-
-        JMenu toolsMenu = new JMenu(languageManager.getString(TranslationKey.MENU_TOOLS));
-        toolsMenu.add(buildSelectPortMenu());
-        toolsMenu.addSeparator();
-        JMenuItem clearConsoleItem = new JMenuItem("Wyczyść konsolę");
-        clearConsoleItem.addActionListener(e -> consolePanel.clear());
-        toolsMenu.add(clearConsoleItem);
-
-        menuBar.add(fileMenu);
-        menuBar.add(toolsMenu);
-        setJMenuBar(menuBar);
     }
 
     private JMenu buildSelectPortMenu() {

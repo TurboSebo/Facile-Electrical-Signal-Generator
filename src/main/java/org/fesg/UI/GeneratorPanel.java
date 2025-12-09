@@ -1,5 +1,7 @@
 package org.fesg.UI;
 
+import org.fesg.i18n.LanguageManager;
+import org.fesg.i18n.TranslationKey;
 import org.fesg.service.ArduinoCommands;
 import org.fesg.service.ArduinoService;
 
@@ -9,6 +11,7 @@ import java.awt.*;
 public class GeneratorPanel extends JPanel {
 
     private final ConsoleLogger consoleLogger;
+    private final LanguageManager languageManager = LanguageManager.getInstance();
     private ArduinoService arduinoService;
 
     private JTextField freqField;
@@ -34,11 +37,12 @@ public class GeneratorPanel extends JPanel {
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
         JPanel freqPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        freqPanel.setBorder(BorderFactory.createTitledBorder("Konfiguracja"));
+        freqPanel.setBorder(BorderFactory.createTitledBorder(
+                languageManager.getString(TranslationKey.PANEL_GENERATOR_CONFIG_TITLE)));
 
         freqField = new JTextField("1.0", 5);
         freqField.setFont(new Font("Monospaced", Font.BOLD, 16));
-        btnSetFreq = new JButton("Ustaw Hz");
+        btnSetFreq = new JButton(languageManager.getString(TranslationKey.PANEL_GENERATOR_BUTTON_SET_FREQ));
 
         btnSetFreq.addActionListener(e -> {
             try {
@@ -53,14 +57,15 @@ public class GeneratorPanel extends JPanel {
             }
         });
 
-        freqPanel.add(new JLabel("Częstotliwość (Hz): "));
+        freqPanel.add(new JLabel(languageManager.getString(TranslationKey.PANEL_GENERATOR_FREQUENCY_LABEL)));
         freqPanel.add(freqField);
         freqPanel.add(btnSetFreq);
 
         JPanel controlPanel = new JPanel(new GridLayout(1, 3, 10, 0));
-        controlPanel.setBorder(BorderFactory.createTitledBorder("Sterowanie Ciągłe"));
+        controlPanel.setBorder(BorderFactory.createTitledBorder(
+                languageManager.getString(TranslationKey.PANEL_GENERATOR_CONTINUOUS_TITLE)));
 
-        btnStartSine = new JButton("START (Ciągły)");
+        btnStartSine = new JButton(languageManager.getString(TranslationKey.PANEL_GENERATOR_BUTTON_START_CONTINUOUS));
         btnStartSine.setBackground(new Color(150, 255, 150));
         btnStartSine.addActionListener(e -> {
             if (arduinoService != null) {
@@ -69,7 +74,7 @@ public class GeneratorPanel extends JPanel {
             }
         });
 
-        btnStopGen = new JButton("STOP");
+        btnStopGen = new JButton(languageManager.getString(TranslationKey.PANEL_GENERATOR_BUTTON_STOP));
         btnStopGen.setBackground(new Color(255, 150, 150));
         btnStopGen.addActionListener(e -> {
             if (arduinoService != null) {
@@ -78,7 +83,7 @@ public class GeneratorPanel extends JPanel {
             }
         });
 
-        btnOnce = new JButton("JEDEN CYKL");
+        btnOnce = new JButton(languageManager.getString(TranslationKey.PANEL_GENERATOR_BUTTON_ONCE));
         btnOnce.addActionListener(e -> {
             if (arduinoService != null) {
                 arduinoService.send(ArduinoCommands.ONCE);
@@ -91,11 +96,12 @@ public class GeneratorPanel extends JPanel {
         controlPanel.add(btnOnce);
 
         JPanel burstPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        burstPanel.setBorder(BorderFactory.createTitledBorder("Tryb Serii (Burst)"));
+        burstPanel.setBorder(BorderFactory.createTitledBorder(
+                languageManager.getString(TranslationKey.PANEL_GENERATOR_BURST_TITLE)));
 
         burstField = new JTextField("3", 4);
         burstField.setFont(new Font("Monospaced", Font.BOLD, 16));
-        btnBurst = new JButton("WYKONAJ SERIĘ");
+        btnBurst = new JButton(languageManager.getString(TranslationKey.PANEL_GENERATOR_BUTTON_BURST));
 
         btnBurst.addActionListener(e -> {
             try {
@@ -109,7 +115,7 @@ public class GeneratorPanel extends JPanel {
             }
         });
 
-        burstPanel.add(new JLabel("Ilość powtórzeń: "));
+        burstPanel.add(new JLabel(languageManager.getString(TranslationKey.PANEL_GENERATOR_BURST_COUNT_LABEL)));
         burstPanel.add(burstField);
         burstPanel.add(btnBurst);
 
