@@ -1,5 +1,6 @@
 package org.fesg.UI;
 
+import org.fesg.service.ArduinoCommands;
 import org.fesg.service.ArduinoService;
 
 import javax.swing.*;
@@ -44,7 +45,7 @@ public class GeneratorPanel extends JPanel {
                 String val = freqField.getText().replace(",", ".");
                 float f = Float.parseFloat(val);
                 if (arduinoService != null) {
-                    arduinoService.send("FREQ " + f);
+                    arduinoService.send(ArduinoCommands.setFrequency(f));
                     consoleLogger.appendToConsole(">>> [GEN] Ustawianie częstotliwości: " + f + " Hz");
                 }
             } catch (NumberFormatException ex) {
@@ -63,7 +64,7 @@ public class GeneratorPanel extends JPanel {
         btnStartSine.setBackground(new Color(150, 255, 150));
         btnStartSine.addActionListener(e -> {
             if (arduinoService != null) {
-                arduinoService.send("START");
+                arduinoService.send(ArduinoCommands.START);
                 consoleLogger.appendToConsole(">>> [GEN] Start trybu ciągłego");
             }
         });
@@ -72,7 +73,7 @@ public class GeneratorPanel extends JPanel {
         btnStopGen.setBackground(new Color(255, 150, 150));
         btnStopGen.addActionListener(e -> {
             if (arduinoService != null) {
-                arduinoService.send("STOP");
+                arduinoService.send(ArduinoCommands.STOP);
                 consoleLogger.appendToConsole(">>> [GEN] Zatrzymanie");
             }
         });
@@ -80,7 +81,7 @@ public class GeneratorPanel extends JPanel {
         btnOnce = new JButton("JEDEN CYKL");
         btnOnce.addActionListener(e -> {
             if (arduinoService != null) {
-                arduinoService.send("ONCE");
+                arduinoService.send(ArduinoCommands.ONCE);
                 consoleLogger.appendToConsole(">>> [GEN] Wyzwolenie pojedynczego cyklu");
             }
         });
@@ -100,7 +101,7 @@ public class GeneratorPanel extends JPanel {
             try {
                 int count = Integer.parseInt(burstField.getText().trim());
                 if (arduinoService != null) {
-                    arduinoService.send("BURST " + count);
+                    arduinoService.send(ArduinoCommands.burst(count));
                     consoleLogger.appendToConsole(">>> [GEN] Seria: " + count + " powtórzeń");
                 }
             } catch (NumberFormatException ex) {
@@ -137,4 +138,3 @@ public class GeneratorPanel extends JPanel {
         this.arduinoService = arduinoService;
     }
 }
-

@@ -1,5 +1,6 @@
 package org.fesg.UI;
 
+import org.fesg.service.ArduinoCommands;
 import org.fesg.service.ArduinoService;
 
 import javax.swing.*;
@@ -60,7 +61,7 @@ public class ManualControlPanel extends JPanel {
             String value = dacValueField.getText();
             consoleLogger.appendToConsole(">>> [CMD] Ustawiam DAC na: " + value);
             if (arduinoService != null) {
-                arduinoService.send("DAC:" + value);
+                arduinoService.send(ArduinoCommands.setDac(value));
             }
         });
 
@@ -90,7 +91,7 @@ public class ManualControlPanel extends JPanel {
         btnReadVoltage.addActionListener(e -> {
             consoleLogger.appendToConsole(">>> [CMD] Pytam o napięcie...");
             if (arduinoService != null) {
-                arduinoService.send("READV?");
+                arduinoService.send(ArduinoCommands.READ_VOLTAGE);
             }
         });
 
@@ -118,4 +119,3 @@ public class ManualControlPanel extends JPanel {
         this.arduinoService = arduinoService;
     }
 }
-
