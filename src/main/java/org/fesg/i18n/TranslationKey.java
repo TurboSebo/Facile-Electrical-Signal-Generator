@@ -45,6 +45,9 @@ public final class TranslationKey {
     public static final String PANEL_GENERATOR_BURST_TITLE = "panel.generator.burst.title";
     public static final String PANEL_GENERATOR_BURST_COUNT_LABEL = "panel.generator.burst.countLabel";
     public static final String PANEL_GENERATOR_BUTTON_BURST = "panel.generator.button.burst";
+    public static final String PANEL_GENERATOR_WAVE_TYPE_LABEL = "panel.generator.waveType.label";
+    public static final String PANEL_GENERATOR_WAVE_TYPE_SINE = "panel.generator.waveType.sine";
+    public static final String PANEL_GENERATOR_WAVE_TYPE_TRIANGLE = "panel.generator.waveType.triangle";
 
     // File player panel
     public static final String PANEL_FILE_PLAYER_PLACEHOLDER = "panel.filePlayer.placeholder";

@@ -21,6 +21,8 @@ public class GeneratorPanel extends JPanel {
     private JButton btnOnce;
     private JButton btnBurst;
     private JButton btnSetFreq;
+    private JRadioButton waveSineButton;
+    private JRadioButton waveTriangleButton;
 
     public GeneratorPanel(ConsoleLogger consoleLogger, ArduinoService arduinoService) {
         this.consoleLogger = consoleLogger;
@@ -60,6 +62,32 @@ public class GeneratorPanel extends JPanel {
         freqPanel.add(new JLabel(languageManager.getString(TranslationKey.PANEL_GENERATOR_FREQUENCY_LABEL)));
         freqPanel.add(freqField);
         freqPanel.add(btnSetFreq);
+
+        // Wybór typu fali
+        JPanel wavePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        wavePanel.add(new JLabel(languageManager.getString(TranslationKey.PANEL_GENERATOR_WAVE_TYPE_LABEL)));
+        waveSineButton = new JRadioButton(languageManager.getString(TranslationKey.PANEL_GENERATOR_WAVE_TYPE_SINE));
+        waveTriangleButton = new JRadioButton(languageManager.getString(TranslationKey.PANEL_GENERATOR_WAVE_TYPE_TRIANGLE));
+        ButtonGroup waveGroup = new ButtonGroup();
+        waveGroup.add(waveSineButton);
+        waveGroup.add(waveTriangleButton);
+        waveSineButton.setSelected(true);
+
+        waveSineButton.addActionListener(e -> {
+            if (arduinoService != null) {
+                arduinoService.send(ArduinoCommands.WAVE_SINE);
+                consoleLogger.appendToConsole(">>> [GEN] Ustawianie fali: SIN");
+            }
+        });
+        waveTriangleButton.addActionListener(e -> {
+            if (arduinoService != null) {
+                arduinoService.send(ArduinoCommands.WAVE_TRIANGLE);
+                consoleLogger.appendToConsole(">>> [GEN] Ustawianie fali: TRI");
+            }
+        });
+
+        wavePanel.add(waveSineButton);
+        wavePanel.add(waveTriangleButton);
 
         JPanel controlPanel = new JPanel(new GridLayout(1, 3, 10, 0));
         controlPanel.setBorder(BorderFactory.createTitledBorder(
@@ -111,7 +139,7 @@ public class GeneratorPanel extends JPanel {
                     consoleLogger.appendToConsole(">>> [GEN] Seria: " + count + " powtórzeń");
                 }
             } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, "Podaj liczbę całkową!", "Błąd", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Podaj liczbę całkowitą!", "Błąd", JOptionPane.ERROR_MESSAGE);
             }
         });
 
@@ -123,12 +151,15 @@ public class GeneratorPanel extends JPanel {
         add(freqPanel, gbc);
 
         gbc.gridy = 1;
-        add(controlPanel, gbc);
+        add(wavePanel, gbc);
 
         gbc.gridy = 2;
+        add(controlPanel, gbc);
+
+        gbc.gridy = 3;
         add(burstPanel, gbc);
 
-        gbc.gridy = 3; gbc.weighty = 1.0;
+        gbc.gridy = 4; gbc.weighty = 1.0;
         add(new JPanel(), gbc);
     }
 
@@ -138,6 +169,8 @@ public class GeneratorPanel extends JPanel {
         if (btnOnce != null) btnOnce.setEnabled(enabled);
         if (btnBurst != null) btnBurst.setEnabled(enabled);
         if (btnSetFreq != null) btnSetFreq.setEnabled(enabled);
+        if (waveSineButton != null) waveSineButton.setEnabled(enabled);
+        if (waveTriangleButton != null) waveTriangleButton.setEnabled(enabled);
     }
 
     public void setArduinoService(ArduinoService arduinoService) {

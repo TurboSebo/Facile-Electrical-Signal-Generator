@@ -15,6 +15,10 @@ public final class ArduinoCommands {
     public static final String STOP = "STOP";
     public static final String ONCE = "ONCE";
 
+    // Komendy wyboru typu fali
+    public static final String WAVE_SINE = "WAVE SIN";
+    public static final String WAVE_TRIANGLE = "WAVE TRI";
+
     // Komendy parametryzowane
     public static String setDac(String value) {
         return "DAC:" + value;
@@ -28,4 +32,3 @@ public final class ArduinoCommands {
         return "BURST " + count;
     }
 }
-
