@@ -6,7 +6,7 @@
 
     <groupId>org.fesg</groupId>
     <artifactId>facileElectricalSignalGenerator</artifactId>
-    <version>0.2.0-BETA</version>
+    <version>0.2.1-BETA</version>
 
     <properties>
         <maven.compiler.source>11</maven.compiler.source>

@@ -20,6 +20,8 @@ public final class TranslationKey {
     public static final String MENU_TOOLS_SELECT_PORT = "menu.tools.selectPort";
     public static final String MENU_TOOLS_NO_PORTS = "menu.tools.noPorts";
     public static final String MENU_TOOLS_CLEAR_CONSOLE = "menu.tools.clearConsole";
+    public static final String MENU_HELP = "menu.help";
+    public static final String MENU_HELP_ABOUT = "menu.help.about";
 
     // Tabs
     public static final String TAB_MANUAL_CONTROL = "tab.manualControl";

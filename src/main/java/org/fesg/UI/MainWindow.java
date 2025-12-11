@@ -93,8 +93,15 @@ public class MainWindow extends JFrame implements ConsoleLogger {
         toolsMenu.addSeparator();
         toolsMenu.add(languageMenu);
 
+        // Menu Pomoc / Help
+        JMenu helpMenu = new JMenu(languageManager.getString(TranslationKey.MENU_HELP));
+        JMenuItem aboutItem = new JMenuItem(languageManager.getString(TranslationKey.MENU_HELP_ABOUT));
+        aboutItem.addActionListener(e -> showAboutDialog());
+        helpMenu.add(aboutItem);
+
         menuBar.add(fileMenu);
         menuBar.add(toolsMenu);
+        menuBar.add(helpMenu);
         setJMenuBar(menuBar);
     }
 
@@ -113,6 +120,15 @@ public class MainWindow extends JFrame implements ConsoleLogger {
         statusBar.setStatus();
         revalidate();
         repaint();
+    }
+
+    private void showAboutDialog() {
+        String title = languageManager.getString(TranslationKey.MENU_HELP_ABOUT);
+        String message = "Facile Electrical Signal Generator\n" +
+                "Version: 0.2.1-BETA\n" +
+                "Author: Sebastian Kałuża (2025)\n" +
+                "GitHub: https://github.com/TurboSebo/Facile-Electrical-Signal-Generator";
+        JOptionPane.showMessageDialog(this, message, title, JOptionPane.INFORMATION_MESSAGE);
     }
 
     public void setArduinoService(ArduinoService arduinoService) {
