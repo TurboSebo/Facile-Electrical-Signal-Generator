@@ -216,7 +216,8 @@ public class FilePlayerPanel extends JPanel {
                 for (Integer value : loadedSequence) {
                     if (!isPlaying || Thread.currentThread().isInterrupted()) break;
 
-                    arduinoService.send(ArduinoCommands.setDac(String.valueOf(value)));
+                    // używamy wersji setDac(int), żeby uniknąć niepotrzebnego String.valueOf w pętli
+                    arduinoService.send(ArduinoCommands.setDac(value));
                     lastSentIndex++;
 
                     // decydujemy, czy zaktualizować UI
