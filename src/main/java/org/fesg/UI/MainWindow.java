@@ -36,9 +36,9 @@ public class MainWindow extends JFrame implements ConsoleLogger {
         JTabbedPane tabbedPane = new JTabbedPane();
         tabbedPane.setFont(new Font("SansSerif", Font.BOLD, 14));
 
-        manualPanel = new ManualControlPanel(this, arduinoService);
-        generatorPanel = new GeneratorPanel(this, arduinoService);
-        filePlayerPanel = new FilePlayerPanel();
+        manualPanel = new ManualControlPanel(this, null);
+        generatorPanel = new GeneratorPanel(this, null);
+        filePlayerPanel = new FilePlayerPanel(this);
 
         tabbedPane.addTab(languageManager.getString(TranslationKey.TAB_MANUAL_CONTROL), manualPanel);
         tabbedPane.addTab(languageManager.getString(TranslationKey.TAB_WAVE_GENERATOR), generatorPanel);
@@ -134,9 +134,11 @@ public class MainWindow extends JFrame implements ConsoleLogger {
     public void setArduinoService(ArduinoService arduinoService) {
         this.arduinoService = arduinoService;
         this.arduinoService.setMessageListener(this::handleIncomingData);
+
         manualPanel.setArduinoService(arduinoService);
         generatorPanel.setArduinoService(arduinoService);
         filePlayerPanel.setArduinoService(arduinoService);
+
         setupMenuBar();
     }
 
@@ -205,12 +207,18 @@ public class MainWindow extends JFrame implements ConsoleLogger {
                 enableControls(false);
             }
             statusBar.setStatus(connectionState);
+
+            // informujemy FilePlayerPanel o zmianie stanu połączenia
+            if (filePlayerPanel != null) {
+                filePlayerPanel.onConnectionStateChanged(connectionState == ConnectionState.CONNECTED);
+            }
         });
     }
 
     private void enableControls(boolean enable) {
         if (manualPanel != null) manualPanel.setControlsEnabled(enable);
         if (generatorPanel != null) generatorPanel.setControlsEnabled(enable);
+        if (filePlayerPanel != null) filePlayerPanel.setEnabled(enable);
     }
 
     public void setStatusText(String text) {

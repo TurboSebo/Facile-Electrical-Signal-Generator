@@ -16,6 +16,12 @@ public class FilePlayerPanel extends JPanel {
 
     private ArduinoService arduinoService;
 
+    // prosty logger do konsoli
+    private final ConsoleLogger consoleLogger;
+
+    // flaga do uniknięcia spamu przy braku połączenia
+    private boolean connectionWarningShown = false;
+
     private JLabel selectedFileLabel;
     private JLabel statusLabel;
     private JTextField delayField;
@@ -27,8 +33,11 @@ public class FilePlayerPanel extends JPanel {
     private List<Integer> loadedSequence = new ArrayList<>();
     private volatile boolean isPlaying = false;
     private Thread playerThread;
+    // indeks ostatnio wysłanej próbki – używany w wątku i w lambdzie
+    private int lastSentIndex = 0;
 
-    public FilePlayerPanel() {
+    public FilePlayerPanel(ConsoleLogger consoleLogger) {
+        this.consoleLogger = consoleLogger;
         initUI();
     }
 
@@ -106,11 +115,14 @@ public class FilePlayerPanel extends JPanel {
     private void chooseFile() {
         JFileChooser fileChooser = new JFileChooser();
         FileNameExtensionFilter filter = new FileNameExtensionFilter("Pliki tekstowe i CSV", "txt", "csv");
-        fileChooser.setFileFilter(filter); // użycie poprawnej zmiennej
+        fileChooser.setFileFilter(filter);
 
         int result = fileChooser.showOpenDialog(this);
-        if (result == JFileChooser.APPROVE_OPTION) {
+        if (result == JFileChooser.APPROVE_OPTION && fileChooser.getSelectedFile() != null) {
             loadFile(fileChooser.getSelectedFile());
+        } else {
+            // użytkownik anulował – nie zmieniamy bieżącego stanu
+            statusLabel.setText("Anulowano wybór pliku.");
         }
     }
 
@@ -138,22 +150,38 @@ public class FilePlayerPanel extends JPanel {
             btnPlay.setEnabled(!loadedSequence.isEmpty());
             progressBar.setMaximum(Math.max(1, loadedSequence.size()));
             progressBar.setValue(0);
+            statusLabel.setForeground(Color.BLUE);
             statusLabel.setText("Plik wczytany poprawnie.");
         } catch (Exception e) {
+            statusLabel.setForeground(Color.RED);
             statusLabel.setText("Błąd odczytu pliku!");
-            e.printStackTrace();
+            btnPlay.setEnabled(false);
+            progressBar.setValue(0);
         }
     }
 
+    private void startPlaying() {
+        if (loadedSequence.isEmpty() || arduinoService == null) {
+            statusLabel.setForeground(Color.RED);
+            statusLabel.setText("Brak pliku lub połączenia z urządzeniem.");
 
-    private void startPlaying(){
-        if (loadedSequence.isEmpty() || arduinoService == null) return;
+            // pojedynczy komunikat do konsoli przy braku połączenia
+            if (arduinoService == null && !connectionWarningShown) {
+                if (consoleLogger != null) {
+                    consoleLogger.appendToConsole("[FILE PLAYER] Próba odtwarzania bez połączenia – przerwano.");
+                }
+                connectionWarningShown = true;
+            }
+            return;
+        }
+
         int delay;
         try {
             delay = Integer.parseInt(delayField.getText().trim());
             if (delay < 5) delay = 5;
         } catch (NumberFormatException e) {
-            statusLabel.setText("Invalid delay value.");
+            statusLabel.setForeground(Color.RED);
+            statusLabel.setText("Nieprawidłowa wartość opóźnienia.");
             delay = 50;
             delayField.setText("50");
         }
@@ -164,45 +192,93 @@ public class FilePlayerPanel extends JPanel {
         btnStop.setEnabled(true);
         btnLoad.setEnabled(false);
         delayField.setEnabled(false);
+        progressBar.setValue(0);
+        statusLabel.setForeground(Color.BLUE);
         statusLabel.setText("Odtwarzanie...");
 
+        // informacja do konsoli o starcie
+        if (consoleLogger != null) {
+            consoleLogger.appendToConsole("[FILE PLAYER] Start odtwarzania sekwencji (" + loadedSequence.size() + " próbek, " + finalDelay + " ms).");
+        }
+
+        // zresetuj licznik przed startem wątku
+        lastSentIndex = 0;
+
         playerThread = new Thread(() -> {
-           int index = 0;
-           arduinoService.send(ArduinoCommands.STOP);
+            // konfiguracja ograniczenia aktualizacji UI
+            final int UI_UPDATE_EVERY_N_SAMPLES = 10;     // co 10 próbek
+            final long UI_UPDATE_MIN_INTERVAL_MS = 100L;  // ale nie częściej niż co 100 ms
+            long lastUiUpdateTime = 0L;
 
-           for (Integer value : loadedSequence) {
-               if (!isPlaying) break;
-               arduinoService.send(ArduinoCommands.setDac(String.valueOf(value)));
-               index++;
-               final int progress = index;
-               SwingUtilities.invokeLater(() -> {
-                   progressBar.setValue(progress);
-                   statusLabel.setText("Wysłano: " + progress + " / " + loadedSequence.size());
-               });
-               try {
-                   Thread.sleep(finalDelay);
-               } catch (InterruptedException e) {
-                   break;
-               }
-           }
+            try {
+                arduinoService.send(ArduinoCommands.STOP);
 
-           isPlaying = false;
-           SwingUtilities.invokeLater(() -> {
-               statusLabel.setText("Zakończono sekwencję");
-                resetControls();
-           });
-        });
+                for (Integer value : loadedSequence) {
+                    if (!isPlaying || Thread.currentThread().isInterrupted()) break;
+
+                    arduinoService.send(ArduinoCommands.setDac(String.valueOf(value)));
+                    lastSentIndex++;
+
+                    // decydujemy, czy zaktualizować UI
+                    long now = System.currentTimeMillis();
+                    boolean shouldUpdateUi =
+                            (lastSentIndex % UI_UPDATE_EVERY_N_SAMPLES == 0) ||
+                            (now - lastUiUpdateTime >= UI_UPDATE_MIN_INTERVAL_MS);
+
+                    if (shouldUpdateUi) {
+                        lastUiUpdateTime = now;
+                        final int progress = lastSentIndex;
+                        SwingUtilities.invokeLater(() -> {
+                            progressBar.setValue(progress);
+                            statusLabel.setText("Wysłano: " + progress + " / " + loadedSequence.size());
+                        });
+                    }
+
+                    // lekkie logowanie co większy krok, żeby nie spamować
+                    if (consoleLogger != null && lastSentIndex % 500 == 0) {
+                        final int progressForLog = lastSentIndex;
+                        consoleLogger.appendToConsole("[FILE PLAYER] Wysłano " + progressForLog + " próbek...");
+                    }
+
+                    try {
+                        Thread.sleep(finalDelay);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            } finally {
+                isPlaying = false;
+                SwingUtilities.invokeLater(() -> {
+                    statusLabel.setForeground(Color.BLUE);
+                    statusLabel.setText("Zakończono sekwencję");
+                    resetControls();
+                    if (consoleLogger != null) {
+                        consoleLogger.appendToConsole("[FILE PLAYER] Zakończono odtwarzanie sekwencji. Wysłano " + lastSentIndex + " próbek.");
+                    }
+                });
+            }
+        }, "file-player-thread");
         playerThread.start();
-
     }
+
     private void stopPlaying() {
         isPlaying = false;
         if (playerThread != null) {
             playerThread.interrupt();
         }
+        progressBar.setValue(0);
+        statusLabel.setForeground(Color.BLUE);
+        statusLabel.setText("Odtwarzanie zatrzymane");
+        resetControls();
+
+        if (consoleLogger != null) {
+            consoleLogger.appendToConsole("[FILE PLAYER] Odtwarzanie zatrzymane przez użytkownika.");
+        }
     }
+
     private void resetControls() {
-        btnPlay.setEnabled(true);
+        btnPlay.setEnabled(!loadedSequence.isEmpty());
         btnStop.setEnabled(false);
         btnLoad.setEnabled(true);
         delayField.setEnabled(true);
@@ -210,6 +286,17 @@ public class FilePlayerPanel extends JPanel {
 
     public void setArduinoService(ArduinoService arduinoService) {
         this.arduinoService = arduinoService;
+        setEnabled(arduinoService != null);
     }
 
+    /**
+     * Wywoływane z MainWindow przy zmianie stanu połączenia.
+     * Resetuje flagę, aby komunikat o braku połączenia mógł znów pojawić się
+     * tylko raz po kolejnym rozłączeniu.
+     */
+    public void onConnectionStateChanged(boolean connected) {
+        if (connected) {
+            connectionWarningShown = false;
+        }
+    }
 }
