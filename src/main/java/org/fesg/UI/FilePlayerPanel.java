@@ -22,6 +22,11 @@ public class FilePlayerPanel extends JPanel {
     // flaga do uniknięcia spamu przy braku połączenia
     private boolean connectionWarningShown = false;
 
+    // licznik wszystkich wysłanych próbek w trakcie bieżącego odtwarzania
+    private long totalSamplesSent = 0;
+    // indeks próbki w aktualnym przebiegu sekwencji (dla paska postępu)
+    private int currentSampleIndex = 0;
+
     private JLabel selectedFileLabel;
     private JLabel statusLabel;
     private JTextField delayField;
@@ -29,12 +34,13 @@ public class FilePlayerPanel extends JPanel {
     private JButton btnStop;
     private JButton btnLoad;
     private JProgressBar progressBar;
-
+    private JCheckBox loopedCheckBox;
+    boolean looped = false;
     private List<Integer> loadedSequence = new ArrayList<>();
     private volatile boolean isPlaying = false;
     private Thread playerThread;
-    // indeks ostatnio wysłanej próbki – używany w wątku i w lambdzie
-    private int lastSentIndex = 0;
+
+    private int lastSentIndex = 0;  // indeks ostatnio wysłanej próbki – używany w wątku i w lambdzie
 
     public FilePlayerPanel(ConsoleLogger consoleLogger) {
         this.consoleLogger = consoleLogger;
@@ -63,7 +69,7 @@ public class FilePlayerPanel extends JPanel {
         add(btnLoad, gbc);
         gbc.gridx = 1;
         gbc.gridy = 0;
-        gbc.weightx = 1.0; // poprawione pole
+        gbc.weightx = 1.0;
         add(selectedFileLabel, gbc);
 
         JPanel configPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
@@ -76,7 +82,7 @@ public class FilePlayerPanel extends JPanel {
         gbc.gridwidth = 2;
         add(configPanel, gbc);
 
-        //
+
         progressBar = new JProgressBar(0, 100);
         progressBar.setStringPainted(true);
         statusLabel = new JLabel("Gotowy");
@@ -98,12 +104,17 @@ public class FilePlayerPanel extends JPanel {
         btnStop.setBackground(new Color(255, 150, 150)); // poprawiony kolor
         btnStop.setEnabled(false);
 
+        loopedCheckBox = new JCheckBox("Odtwarzaj w pętli", false);
         btnPlay.addActionListener(e -> startPlaying());
         btnStop.addActionListener(e -> stopPlaying());
+        loopedCheckBox.addActionListener(e -> {
+            looped = loopedCheckBox.isSelected();
+            consoleLogger.appendToConsole("Zapetlanie - " + (looped ? "WŁ." : "WYŁ."));
+        });
 
         controlPanel.add(btnPlay);
         controlPanel.add(btnStop);
-
+        controlPanel.add(loopedCheckBox);
         gbc.gridy = 4;
         add(controlPanel, gbc);
 
@@ -187,11 +198,17 @@ public class FilePlayerPanel extends JPanel {
         }
         final int finalDelay = delay;
 
+        // reset liczników przed startem wątku
+        totalSamplesSent = 0;
+        lastSentIndex = 0;
+        currentSampleIndex = 0;
+
         isPlaying = true;
         btnPlay.setEnabled(false);
         btnStop.setEnabled(true);
         btnLoad.setEnabled(false);
         delayField.setEnabled(false);
+        loopedCheckBox.setEnabled(false);
         progressBar.setValue(0);
         statusLabel.setForeground(Color.BLUE);
         statusLabel.setText("Odtwarzanie...");
@@ -200,9 +217,6 @@ public class FilePlayerPanel extends JPanel {
         if (consoleLogger != null) {
             consoleLogger.appendToConsole("[FILE PLAYER] Start odtwarzania sekwencji (" + loadedSequence.size() + " próbek, " + finalDelay + " ms).");
         }
-
-        // zresetuj licznik przed startem wątku
-        lastSentIndex = 0;
 
         playerThread = new Thread(() -> {
             // konfiguracja ograniczenia aktualizacji UI
@@ -213,41 +227,66 @@ public class FilePlayerPanel extends JPanel {
             try {
                 arduinoService.send(ArduinoCommands.STOP);
 
-                for (Integer value : loadedSequence) {
-                    if (!isPlaying || Thread.currentThread().isInterrupted()) break;
+                int loopIteration = 0;
 
-                    // używamy wersji setDac(int), żeby uniknąć niepotrzebnego String.valueOf w pętli
-                    arduinoService.send(ArduinoCommands.setDac(value));
-                    lastSentIndex++;
+                do {
+                    loopIteration++;
+                    currentSampleIndex = 0;
 
-                    // decydujemy, czy zaktualizować UI
-                    long now = System.currentTimeMillis();
-                    boolean shouldUpdateUi =
-                            (lastSentIndex % UI_UPDATE_EVERY_N_SAMPLES == 0) ||
-                            (now - lastUiUpdateTime >= UI_UPDATE_MIN_INTERVAL_MS);
+                    final int loopIterationForLabel = loopIteration;// użyj zmiennej finalnej dla lambdy
 
-                    if (shouldUpdateUi) {
-                        lastUiUpdateTime = now;
-                        final int progress = lastSentIndex;
-                        SwingUtilities.invokeLater(() -> {
-                            progressBar.setValue(progress);
-                            statusLabel.setText("Wysłano: " + progress + " / " + loadedSequence.size());
-                        });
+                    // zresetuj pasek dla nowego przebiegu sekwencji
+                    SwingUtilities.invokeLater(() -> {
+                        progressBar.setMaximum(Math.max(1, loadedSequence.size()));
+                        progressBar.setValue(0);
+                        statusLabel.setText("Odtwarzanie... (przebieg " + loopIterationForLabel + ")");
+                    });
+
+                    for (int i = 0; i < loadedSequence.size(); i++) {
+                        if (!isPlaying || Thread.currentThread().isInterrupted()) {
+                            break;
+                        }
+
+                        Integer value = loadedSequence.get(i);
+                        arduinoService.send(ArduinoCommands.setDac(value));   //  setDac(int) jest żeby uniknąć niepotrzebnego String.valueOf w pętli
+
+
+                        // aktualizacja liczników
+                        totalSamplesSent++;
+                        lastSentIndex = i;
+                        currentSampleIndex = i;
+
+                        // decyduuje czy zaktualizować UI
+                        long now = System.currentTimeMillis();
+                        boolean shouldUpdateUi =
+                                ((currentSampleIndex + 1) % UI_UPDATE_EVERY_N_SAMPLES == 0) ||
+                                        (now - lastUiUpdateTime >= UI_UPDATE_MIN_INTERVAL_MS);
+
+                        if (shouldUpdateUi) {
+                            lastUiUpdateTime = now;
+                            final int progressCurrent = currentSampleIndex + 1;
+                            final int totalInSequence = loadedSequence.size();
+                            SwingUtilities.invokeLater(() -> {
+                                progressBar.setMaximum(Math.max(1, totalInSequence));
+                                progressBar.setValue(progressCurrent);
+                                statusLabel.setText("Wysłano: " + progressCurrent + " / " + totalInSequence);
+                            });
+                        }
+
+                        // lekkie logowanie co większy krok, żeby nie spamować
+                        if (consoleLogger != null && totalSamplesSent % 500 == 0) {
+                            final long progressForLog = totalSamplesSent;
+                            consoleLogger.appendToConsole("[FILE PLAYER] Wysłano " + progressForLog + " próbek...");
+                        }
+
+                        try {
+                            Thread.sleep(finalDelay);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
                     }
-
-                    // lekkie logowanie co większy krok, żeby nie spamować
-                    if (consoleLogger != null && lastSentIndex % 500 == 0) {
-                        final int progressForLog = lastSentIndex;
-                        consoleLogger.appendToConsole("[FILE PLAYER] Wysłano " + progressForLog + " próbek...");
-                    }
-
-                    try {
-                        Thread.sleep(finalDelay);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
-                }
+                } while (looped && isPlaying && !Thread.currentThread().isInterrupted());
             } finally {
                 isPlaying = false;
                 SwingUtilities.invokeLater(() -> {
@@ -255,7 +294,7 @@ public class FilePlayerPanel extends JPanel {
                     statusLabel.setText("Zakończono sekwencję");
                     resetControls();
                     if (consoleLogger != null) {
-                        consoleLogger.appendToConsole("[FILE PLAYER] Zakończono odtwarzanie sekwencji. Wysłano " + lastSentIndex + " próbek.");
+                        consoleLogger.appendToConsole("[FILE PLAYER] Zakończono odtwarzanie sekwencji. Łącznie wysłano " + totalSamplesSent + " próbek.");
                     }
                 });
             }
@@ -274,7 +313,7 @@ public class FilePlayerPanel extends JPanel {
         resetControls();
 
         if (consoleLogger != null) {
-            consoleLogger.appendToConsole("[FILE PLAYER] Odtwarzanie zatrzymane przez użytkownika.");
+            consoleLogger.appendToConsole("[FILE PLAYER] Odtwarzanie zatrzymane przez użytkownika. Łącznie wysłano " + totalSamplesSent + " próbek.");
         }
     }
 
@@ -283,6 +322,7 @@ public class FilePlayerPanel extends JPanel {
         btnStop.setEnabled(false);
         btnLoad.setEnabled(true);
         delayField.setEnabled(true);
+        loopedCheckBox.setEnabled(true);
     }
 
     public void setArduinoService(ArduinoService arduinoService) {
