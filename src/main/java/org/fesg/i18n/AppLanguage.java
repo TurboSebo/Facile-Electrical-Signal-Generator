@@ -19,4 +19,16 @@ public enum AppLanguage {
     public String getCountryCode() {
         return countryCode;
     }
+
+    public static AppLanguage fromCode(String code) {
+        if (code == null || code.isBlank()) {
+            return PL;
+        }
+        for (AppLanguage lang : values()) {
+            if (lang.languageCode.equalsIgnoreCase(code)) {
+                return lang;
+            }
+        }
+        return PL;
+    }
 }

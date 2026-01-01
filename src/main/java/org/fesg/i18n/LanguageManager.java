@@ -8,6 +8,7 @@ public class LanguageManager {
     private static LanguageManager instance;
     private ResourceBundle resourceBundle;
     private Locale currentLocale;
+    private AppLanguage currentLanguage;
 
     private LanguageManager(AppLanguage language) {
         setLanguage(language);
@@ -21,6 +22,7 @@ public class LanguageManager {
     }
 
     public void setLanguage(AppLanguage language) {
+        currentLanguage = language;
         currentLocale = new Locale(language.getLanguageCode(), language.getCountryCode());
         resourceBundle = ResourceBundle.getBundle("i18n.MessagesBundle", currentLocale);
         //resourceBundle = ResourceBundle.getBundle("i18n.MessagesBundle", currentLocale, new UTF8Control());
@@ -28,5 +30,9 @@ public class LanguageManager {
 
     public String getString(String key) {
         return resourceBundle.getString(key);
+    }
+
+    public AppLanguage getCurrentLanguage() {
+        return currentLanguage;
     }
 }

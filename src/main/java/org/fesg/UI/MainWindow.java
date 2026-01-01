@@ -73,7 +73,6 @@ public class MainWindow extends JFrame implements ConsoleLogger {
         clearConsoleItem.addActionListener(e -> consolePanel.clear());
         toolsMenu.add(clearConsoleItem);
 
-        // Podmenu języka wewnątrz "Narzędzia"
         JMenu languageMenu = new JMenu(languageManager.getString(TranslationKey.MENU_LANGUAGE));
         JRadioButtonMenuItem langPl = new JRadioButtonMenuItem(languageManager.getString(TranslationKey.MENU_LANGUAGE_PL));
         JRadioButtonMenuItem langEn = new JRadioButtonMenuItem(languageManager.getString(TranslationKey.MENU_LANGUAGE_EN));
@@ -82,8 +81,13 @@ public class MainWindow extends JFrame implements ConsoleLogger {
         langGroup.add(langPl);
         langGroup.add(langEn);
 
-        // Domyślnie PL
-        langPl.setSelected(true);
+        org.fesg.service.ConfigManager configManager = org.fesg.service.ConfigManager.getInstance();
+        AppLanguage current = configManager.getLanguage();
+        if (current == AppLanguage.EN) {
+            langEn.setSelected(true);
+        } else {
+            langPl.setSelected(true);
+        }
 
         langPl.addActionListener(e -> changeLanguage(AppLanguage.PL));
         langEn.addActionListener(e -> changeLanguage(AppLanguage.EN));
@@ -93,7 +97,6 @@ public class MainWindow extends JFrame implements ConsoleLogger {
         toolsMenu.addSeparator();
         toolsMenu.add(languageMenu);
 
-        // Menu Pomoc / Help
         JMenu helpMenu = new JMenu(languageManager.getString(TranslationKey.MENU_HELP));
         JMenuItem aboutItem = new JMenuItem(languageManager.getString(TranslationKey.MENU_HELP_ABOUT));
         aboutItem.addActionListener(e -> showAboutDialog());
@@ -107,6 +110,7 @@ public class MainWindow extends JFrame implements ConsoleLogger {
 
     private void changeLanguage(AppLanguage language) {
         languageManager.setLanguage(language);
+        org.fesg.service.ConfigManager.getInstance().setLanguage(language);
         SwingUtilities.invokeLater(this::refreshTexts);
     }
 
