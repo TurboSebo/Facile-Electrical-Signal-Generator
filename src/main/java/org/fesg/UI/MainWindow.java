@@ -152,7 +152,7 @@ public class MainWindow extends JFrame implements ConsoleLogger {
     private void showAboutDialog() {
         String title = languageManager.getString(TranslationKey.MENU_HELP_ABOUT);
         String message = "Facile Electrical Signal Generator\n" +
-                "Version: 0.3.4-BETA (Realease Candidate 1)\n" +
+                "Version: 0.3.4-BETA (Release Candidate 1)\n" +
                 "Author: Sebastian Kałuża (2025)\n" +
                 "GitHub: https://github.com/TurboSebo/Facile-Electrical-Signal-Generator";
         JOptionPane.showMessageDialog(this, message, title, JOptionPane.INFORMATION_MESSAGE);
