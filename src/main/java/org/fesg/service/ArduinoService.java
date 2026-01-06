@@ -45,7 +45,6 @@ public class ArduinoService {
         System.out.println("Ręcznie rozłączono.");
     }
 
-    // --- NOWE METODY (MOST) ---
 
     /**
      * Wysyła komendę do Arduino (np. "DAC:2000" lub "READV?")

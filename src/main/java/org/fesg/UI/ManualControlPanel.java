@@ -66,7 +66,7 @@ public class ManualControlPanel extends JPanel {
 
         btnSetDac.addActionListener(e -> {
             String value = dacValueField.getText();
-            consoleLogger.appendToConsole(">>> [CMD] Ustawiam DAC na: " + value);
+            consoleLogger.appendToConsole(languageManager.getString(TranslationKey.PANEL_MANUAL_LOG_SET_DAC) + " " + value);
             if (arduinoService != null) {
                 arduinoService.send(ArduinoCommands.setDac(value));
             }
@@ -97,7 +97,7 @@ public class ManualControlPanel extends JPanel {
         btnReadVoltage.setPreferredSize(new Dimension(150, 40));
 
         btnReadVoltage.addActionListener(e -> {
-            consoleLogger.appendToConsole(">>> [CMD] Pytam o napięcie...");
+            consoleLogger.appendToConsole(languageManager.getString(TranslationKey.PANEL_MANUAL_LOG_READ_VOLTAGE));
             if (arduinoService != null) {
                 arduinoService.send(ArduinoCommands.READ_VOLTAGE);
             }

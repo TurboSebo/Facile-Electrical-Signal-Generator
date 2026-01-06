@@ -1,5 +1,7 @@
 package org.fesg.UI;
 
+import org.fesg.i18n.LanguageManager;
+import org.fesg.i18n.TranslationKey;
 import org.fesg.service.ArduinoCommands;
 import org.fesg.service.ArduinoService;
 
@@ -14,6 +16,7 @@ import java.util.List;
 
 public class FilePlayerPanel extends JPanel {
 
+    private final LanguageManager languageManager = LanguageManager.getInstance();
     private ArduinoService arduinoService;
 
     // prosty logger do konsoli
@@ -51,7 +54,7 @@ public class FilePlayerPanel extends JPanel {
         setLayout(new GridBagLayout());
         setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createEtchedBorder(),
-                "Odtwarzacz z pliku"
+                languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_TITLE)
         ));
 
         GridBagConstraints gbc = new GridBagConstraints();
@@ -59,8 +62,8 @@ public class FilePlayerPanel extends JPanel {
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
         // Sekcja wyboru pliku
-        btnLoad = new JButton("Wczytaj plik");
-        selectedFileLabel = new JLabel("Brak pliku");
+        btnLoad = new JButton(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_BUTTON_LOAD));
+        selectedFileLabel = new JLabel(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_NO_FILE));
 
         btnLoad.addActionListener(e -> chooseFile());
 
@@ -73,7 +76,7 @@ public class FilePlayerPanel extends JPanel {
         add(selectedFileLabel, gbc);
 
         JPanel configPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        configPanel.add(new JLabel("Opóźnienie (ms):"));
+        configPanel.add(new JLabel(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_DELAY_LABEL)));
         delayField = new JTextField("50", 5);
         configPanel.add(delayField);
 
@@ -85,7 +88,7 @@ public class FilePlayerPanel extends JPanel {
 
         progressBar = new JProgressBar(0, 100);
         progressBar.setStringPainted(true);
-        statusLabel = new JLabel("Gotowy");
+        statusLabel = new JLabel(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_STATUS_READY));
         statusLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
         statusLabel.setForeground(Color.BLUE); // ujednolicone
 
@@ -96,20 +99,20 @@ public class FilePlayerPanel extends JPanel {
 
         //przyciski
         JPanel controlPanel = new JPanel(new GridLayout(1, 2, 10, 0));
-        btnPlay = new JButton("START");
+        btnPlay = new JButton(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_BUTTON_PLAY));
         btnPlay.setBackground(new Color(150, 255, 150));
         btnPlay.setEnabled(false);
 
-        btnStop = new JButton("STOP");
+        btnStop = new JButton(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_BUTTON_STOP));
         btnStop.setBackground(new Color(255, 150, 150)); // poprawiony kolor
         btnStop.setEnabled(false);
 
-        loopedCheckBox = new JCheckBox("Odtwarzaj w pętli", false);
+        loopedCheckBox = new JCheckBox(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_CHECKBOX_LOOP), false);
         btnPlay.addActionListener(e -> startPlaying());
         btnStop.addActionListener(e -> stopPlaying());
         loopedCheckBox.addActionListener(e -> {
             looped = loopedCheckBox.isSelected();
-            consoleLogger.appendToConsole("Zapetlanie - " + (looped ? "WŁ." : "WYŁ."));
+            consoleLogger.appendToConsole(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_LOG_LOOP) + " " + (looped ? languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_LOG_ON) : languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_LOG_OFF)));
         });
 
         controlPanel.add(btnPlay);
@@ -125,7 +128,7 @@ public class FilePlayerPanel extends JPanel {
 
     private void chooseFile() {
         JFileChooser fileChooser = new JFileChooser();
-        FileNameExtensionFilter filter = new FileNameExtensionFilter("Pliki tekstowe i CSV", "txt", "csv");
+        FileNameExtensionFilter filter = new FileNameExtensionFilter(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_FILTER_DESC), "txt", "csv");
         fileChooser.setFileFilter(filter);
 
         int result = fileChooser.showOpenDialog(this);
@@ -133,7 +136,7 @@ public class FilePlayerPanel extends JPanel {
             loadFile(fileChooser.getSelectedFile());
         } else {
             // użytkownik anulował – nie zmieniamy bieżącego stanu
-            statusLabel.setText("Anulowano wybór pliku.");
+            statusLabel.setText(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_STATUS_CANCELLED));
         }
     }
 
@@ -157,15 +160,15 @@ public class FilePlayerPanel extends JPanel {
                     }
                 }
             }
-            selectedFileLabel.setText("Plik: " + file.getName() + " [" + loadedSequence.size() + " próbek]");
+            selectedFileLabel.setText(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_FILE_LABEL_PREFIX) + file.getName() + " [" + loadedSequence.size() + languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_FILE_LABEL_SUFFIX));
             btnPlay.setEnabled(!loadedSequence.isEmpty());
             progressBar.setMaximum(Math.max(1, loadedSequence.size()));
             progressBar.setValue(0);
             statusLabel.setForeground(Color.BLUE);
-            statusLabel.setText("Plik wczytany poprawnie.");
+            statusLabel.setText(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_STATUS_LOADED));
         } catch (Exception e) {
             statusLabel.setForeground(Color.RED);
-            statusLabel.setText("Błąd odczytu pliku!");
+            statusLabel.setText(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_STATUS_ERROR_READ));
             btnPlay.setEnabled(false);
             progressBar.setValue(0);
         }
@@ -174,12 +177,12 @@ public class FilePlayerPanel extends JPanel {
     private void startPlaying() {
         if (loadedSequence.isEmpty() || arduinoService == null) {
             statusLabel.setForeground(Color.RED);
-            statusLabel.setText("Brak pliku lub połączenia z urządzeniem.");
+            statusLabel.setText(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_STATUS_NO_CONNECTION));
 
             // pojedynczy komunikat do konsoli przy braku połączenia
             if (arduinoService == null && !connectionWarningShown) {
                 if (consoleLogger != null) {
-                    consoleLogger.appendToConsole("[FILE PLAYER] Próba odtwarzania bez połączenia – przerwano.");
+                    consoleLogger.appendToConsole(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_LOG_NO_CONNECTION));
                 }
                 connectionWarningShown = true;
             }
@@ -192,7 +195,7 @@ public class FilePlayerPanel extends JPanel {
             if (delay < 5) delay = 5;
         } catch (NumberFormatException e) {
             statusLabel.setForeground(Color.RED);
-            statusLabel.setText("Nieprawidłowa wartość opóźnienia.");
+            statusLabel.setText(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_STATUS_INVALID_DELAY));
             delay = 50;
             delayField.setText("50");
         }
@@ -211,11 +214,11 @@ public class FilePlayerPanel extends JPanel {
         loopedCheckBox.setEnabled(false);
         progressBar.setValue(0);
         statusLabel.setForeground(Color.BLUE);
-        statusLabel.setText("Odtwarzanie...");
+        statusLabel.setText(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_STATUS_PLAYING));
 
         // informacja do konsoli o starcie
         if (consoleLogger != null) {
-            consoleLogger.appendToConsole("[FILE PLAYER] Start odtwarzania sekwencji (" + loadedSequence.size() + " próbek, " + finalDelay + " ms).");
+            consoleLogger.appendToConsole(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_LOG_START_PREFIX) + loadedSequence.size() + languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_LOG_SAMPLES) + finalDelay + languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_LOG_MS_SUFFIX));
         }
 
         playerThread = new Thread(() -> {
@@ -239,7 +242,7 @@ public class FilePlayerPanel extends JPanel {
                     SwingUtilities.invokeLater(() -> {
                         progressBar.setMaximum(Math.max(1, loadedSequence.size()));
                         progressBar.setValue(0);
-                        statusLabel.setText("Odtwarzanie... (przebieg " + loopIterationForLabel + ")");
+                        statusLabel.setText(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_STATUS_PLAYING_LOOP) + loopIterationForLabel + languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_STATUS_PLAYING_LOOP_SUFFIX));
                     });
 
                     for (int i = 0; i < loadedSequence.size(); i++) {
@@ -256,7 +259,7 @@ public class FilePlayerPanel extends JPanel {
                         lastSentIndex = i;
                         currentSampleIndex = i;
 
-                        // decyduuje czy zaktualizować UI
+                        // decyduje czy zaktualizować UI
                         long now = System.currentTimeMillis();
                         boolean shouldUpdateUi =
                                 ((currentSampleIndex + 1) % UI_UPDATE_EVERY_N_SAMPLES == 0) ||
@@ -269,14 +272,14 @@ public class FilePlayerPanel extends JPanel {
                             SwingUtilities.invokeLater(() -> {
                                 progressBar.setMaximum(Math.max(1, totalInSequence));
                                 progressBar.setValue(progressCurrent);
-                                statusLabel.setText("Wysłano: " + progressCurrent + " / " + totalInSequence);
+                                statusLabel.setText(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_STATUS_SENT) + progressCurrent + " / " + totalInSequence);
                             });
                         }
 
                         // lekkie logowanie co większy krok, żeby nie spamować
                         if (consoleLogger != null && totalSamplesSent % 500 == 0) {
                             final long progressForLog = totalSamplesSent;
-                            consoleLogger.appendToConsole("[FILE PLAYER] Wysłano " + progressForLog + " próbek...");
+                            consoleLogger.appendToConsole(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_LOG_SENT_PREFIX) + progressForLog + languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_LOG_SENT_SUFFIX));
                         }
 
                         try {
@@ -291,10 +294,10 @@ public class FilePlayerPanel extends JPanel {
                 isPlaying = false;
                 SwingUtilities.invokeLater(() -> {
                     statusLabel.setForeground(Color.BLUE);
-                    statusLabel.setText("Zakończono sekwencję");
+                    statusLabel.setText(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_STATUS_FINISHED));
                     resetControls();
                     if (consoleLogger != null) {
-                        consoleLogger.appendToConsole("[FILE PLAYER] Zakończono odtwarzanie sekwencji. Łącznie wysłano " + totalSamplesSent + " próbek.");
+                        consoleLogger.appendToConsole(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_LOG_FINISHED_PREFIX) + totalSamplesSent + languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_LOG_TOTAL_SUFFIX));
                     }
                 });
             }
@@ -309,11 +312,11 @@ public class FilePlayerPanel extends JPanel {
         }
         progressBar.setValue(0);
         statusLabel.setForeground(Color.BLUE);
-        statusLabel.setText("Odtwarzanie zatrzymane");
+        statusLabel.setText(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_STATUS_STOPPED));
         resetControls();
 
         if (consoleLogger != null) {
-            consoleLogger.appendToConsole("[FILE PLAYER] Odtwarzanie zatrzymane przez użytkownika. Łącznie wysłano " + totalSamplesSent + " próbek.");
+            consoleLogger.appendToConsole(languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_LOG_STOPPED_PREFIX) + totalSamplesSent + languageManager.getString(TranslationKey.PANEL_FILE_PLAYER_LOG_TOTAL_SUFFIX));
         }
     }
 

@@ -52,10 +52,13 @@ public class GeneratorPanel extends JPanel {
                 float f = Float.parseFloat(val);
                 if (arduinoService != null) {
                     arduinoService.send(ArduinoCommands.setFrequency(f));
-                    consoleLogger.appendToConsole(">>> [GEN] Ustawianie częstotliwości: " + f + " Hz");
+                    consoleLogger.appendToConsole(languageManager.getString(TranslationKey.PANEL_GENERATOR_LOG_SET_FREQ) + " " + f + " Hz");
                 }
             } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, "Podaj poprawną liczbę (np. 1.5)", "Błąd", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this,
+                        languageManager.getString(TranslationKey.PANEL_GENERATOR_ERROR_INVALID_FLOAT),
+                        languageManager.getString(TranslationKey.ERROR_TITLE),
+                        JOptionPane.ERROR_MESSAGE);
             }
         });
 
@@ -76,13 +79,13 @@ public class GeneratorPanel extends JPanel {
         waveSineButton.addActionListener(e -> {
             if (arduinoService != null) {
                 arduinoService.send(ArduinoCommands.WAVE_SINE);
-                consoleLogger.appendToConsole(">>> [GEN] Ustawianie fali: SIN");
+                consoleLogger.appendToConsole(languageManager.getString(TranslationKey.PANEL_GENERATOR_LOG_WAVE_SINE));
             }
         });
         waveTriangleButton.addActionListener(e -> {
             if (arduinoService != null) {
                 arduinoService.send(ArduinoCommands.WAVE_TRIANGLE);
-                consoleLogger.appendToConsole(">>> [GEN] Ustawianie fali: TRI");
+                consoleLogger.appendToConsole(languageManager.getString(TranslationKey.PANEL_GENERATOR_LOG_WAVE_TRIANGLE));
             }
         });
 
@@ -98,7 +101,7 @@ public class GeneratorPanel extends JPanel {
         btnStartSine.addActionListener(e -> {
             if (arduinoService != null) {
                 arduinoService.send(ArduinoCommands.START);
-                consoleLogger.appendToConsole(">>> [GEN] Start trybu ciągłego");
+                consoleLogger.appendToConsole(languageManager.getString(TranslationKey.PANEL_GENERATOR_LOG_START_CONTINUOUS));
             }
         });
 
@@ -107,7 +110,7 @@ public class GeneratorPanel extends JPanel {
         btnStopGen.addActionListener(e -> {
             if (arduinoService != null) {
                 arduinoService.send(ArduinoCommands.STOP);
-                consoleLogger.appendToConsole(">>> [GEN] Zatrzymanie");
+                consoleLogger.appendToConsole(languageManager.getString(TranslationKey.PANEL_GENERATOR_LOG_STOP));
             }
         });
 
@@ -115,7 +118,7 @@ public class GeneratorPanel extends JPanel {
         btnOnce.addActionListener(e -> {
             if (arduinoService != null) {
                 arduinoService.send(ArduinoCommands.ONCE);
-                consoleLogger.appendToConsole(">>> [GEN] Wyzwolenie pojedynczego cyklu");
+                consoleLogger.appendToConsole(languageManager.getString(TranslationKey.PANEL_GENERATOR_LOG_ONCE));
             }
         });
 
@@ -136,10 +139,10 @@ public class GeneratorPanel extends JPanel {
                 int count = Integer.parseInt(burstField.getText().trim());
                 if (arduinoService != null) {
                     arduinoService.send(ArduinoCommands.burst(count));
-                    consoleLogger.appendToConsole(">>> [GEN] Seria: " + count + " powtórzeń");
+                    consoleLogger.appendToConsole(languageManager.getString(TranslationKey.PANEL_GENERATOR_LOG_BURST_PREFIX) + " " + count + " " + languageManager.getString(TranslationKey.PANEL_GENERATOR_LOG_BURST_SUFFIX));
                 }
             } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, "Podaj liczbę całkowitą!", "Błąd", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, languageManager.getString(TranslationKey.PANEL_GENERATOR_ERROR_INVALID_INT), languageManager.getString(TranslationKey.ERROR_TITLE), JOptionPane.ERROR_MESSAGE);
             }
         });
 

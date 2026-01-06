@@ -109,9 +109,32 @@ public class MainWindow extends JFrame implements ConsoleLogger {
     }
 
     private void changeLanguage(AppLanguage language) {
+        // Zmiana języka w LanguageManager i ConfigManager
         languageManager.setLanguage(language);
         org.fesg.service.ConfigManager.getInstance().setLanguage(language);
-        SwingUtilities.invokeLater(this::refreshTexts);
+        refreshTexts();
+
+        String title = languageManager.getString(TranslationKey.MENU_LANGUAGE);
+        // Wiadomość dobierana na podstawie aktualnie wybranego języka
+        String message;
+        if (language == AppLanguage.PL) {
+            message = "Zmiana języka wymaga ponownego uruchomienia aplikacji.\nCzy chcesz teraz zamknąć aplikację?";
+        } else {
+            message = "Changing the language requires restarting the application.\nDo you want to close the application now?";
+        }
+
+        int result = JOptionPane.showConfirmDialog(
+                this,
+                message,
+                title,
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+        );
+
+        if (result == JOptionPane.YES_OPTION) {
+            System.exit(0);
+        }
+        // Jeśli użytkownik wybierze NIE, aplikacja pozostaje otwarta już w nowym języku
     }
 
     private void refreshTexts() {
@@ -129,7 +152,7 @@ public class MainWindow extends JFrame implements ConsoleLogger {
     private void showAboutDialog() {
         String title = languageManager.getString(TranslationKey.MENU_HELP_ABOUT);
         String message = "Facile Electrical Signal Generator\n" +
-                "Version: 0.3.2-BETA\n" +
+                "Version: 0.3.3-BETA (Realease Candidate 1)\n" +
                 "Author: Sebastian Kałuża (2025)\n" +
                 "GitHub: https://github.com/TurboSebo/Facile-Electrical-Signal-Generator";
         JOptionPane.showMessageDialog(this, message, title, JOptionPane.INFORMATION_MESSAGE);
@@ -206,7 +229,7 @@ public class MainWindow extends JFrame implements ConsoleLogger {
             if (connectionState == ConnectionState.CONNECTED && arduinoService != null) {
                 statusBar.setDetectedPort(arduinoService.getDetectedPort());
                 enableControls(true);
-                appendToConsole("--- POŁĄCZONO Z URZĄRDZENIEM ---");
+                appendToConsole("--- POŁĄCZONO Z URZĄDZENIEM ---");
             } else {
                 enableControls(false);
             }

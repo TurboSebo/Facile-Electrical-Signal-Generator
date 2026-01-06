@@ -31,7 +31,7 @@ public final class ArduinoCommands {
     }
 
     /**
-     * Zachowujemy stare API dla kompatybilności, ale delegujemy do wersji int,
+     *  stare API dla kompatybilności, ale delegowane do wersji int,
      * żeby uniknąć duplikacji logiki.
      */
     public static String setDac(String value) {
