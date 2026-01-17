@@ -2,6 +2,7 @@ package org.fesg.i18n;
 
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.MissingResourceException;
 
 public class LanguageManager {
 
@@ -29,7 +30,20 @@ public class LanguageManager {
     }
 
     public String getString(String key) {
-        return resourceBundle.getString(key);
+        try {
+            return resourceBundle.getString(key);
+        } catch (MissingResourceException ex) {
+            // Fallback: spróbuj EN, a jak też nie ma, zwróć czytelny placeholder.
+            try {
+                ResourceBundle fallback = ResourceBundle.getBundle("i18n.MessagesBundle", new Locale("en", "GB"));
+                if (fallback.containsKey(key)) {
+                    return fallback.getString(key);
+                }
+            } catch (Exception ignored) {
+                // ignoruje problemy z fallbackiem
+            }
+            return "!!" + key + "!!";
+        }
     }
 
     public AppLanguage getCurrentLanguage() {

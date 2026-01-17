@@ -29,7 +29,7 @@ public class StatusBar extends JPanel {
         connectionIcon.setForeground(Color.GRAY);
         connectionIcon.setFont(new Font("SansSerif", Font.BOLD, 14));
 
-        statusLabel = new JLabel(languageManager.getString(TranslationKey.STATUS_SEARCHING));
+        statusLabel = new JLabel(languageManager.getString(TranslationKey.STATUS_DISCONNECTED));
 
         errorLabel = new JLabel("");
         errorLabel.setForeground(Color.RED);
