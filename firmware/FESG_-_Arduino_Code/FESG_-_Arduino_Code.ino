@@ -103,7 +103,7 @@ void setup() {
            // Inicjalizacja DAC
            if (!dac.begin(0x60)) {
              Serial.println("ERROR: DAC NOT FOUND");
-             // Możesz tu dodać pętlę nieskończoną lub mruganie błędu
+             // Błąd jeśli nie znaleziono MCP4725
            } else {
              Serial.print(DEVICE_ID); Serial.print('\n'); Serial.flush();
              CONNECTED_WITH_PC = true;
